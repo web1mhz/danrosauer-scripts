@@ -36,16 +36,16 @@ sys.path.append("C:\\Users\\u3579238\Work\Phylofest\\")
 import LineageFunctions
 
 # PARAMETERS ###
-species_name = "Lampropholis_delicata"   # of course this would not be a poarameter in the multi-species version
-points = "C:\\Users\\u3579238\Work\Phylofest\\Lampropholis_delicata_seq.shp"  # sequenced locations point shapefile
-output_location = "C:\\Users\\u3579238\Work\Phylofest\\L_delicata.gdb"
-maxent_model = "C:\\Users\\u3579238\Work\Phylofest\\Lampropholis_delicata.gdb\\Lampropholis_delicata_envmod"
+species_name = "Diporiphora_bilineata_group"   # of course this would not be a poarameter in the multi-species version
+points = "C:\\Users\\u3579238\Work\Phylofest\\Diporiphora_seq.shp"  # sequenced locations point shapefile
+output_location = "C:\\Users\\u3579238\Work\Phylofest\\Diporiphora_test.gdb"
+maxent_model = "C:\\Users\\u3579238\Work\Phylofest\\Diporiphora_test.gdb\\D_bilineata_grp_maxent"
 buffer_dist = 4                                                               # the buffer distance in degrees
 additional_buffer = 0  ## how much (as a proportion) the output grids should extend beyond the buffered points
 grid_resolution = 0.01
 Australia_extent = arcpy.Extent(112,-44,154,-8.5)
 Lineage_field_name = "Lineage"
-Distance_method = "euclidian"       ## determines whether distance is calculated as euclidean or model-weighted cost distance
+Distance_method = "model-cost"       ## determines whether distance is calculated as euclidean or model-weighted cost distance
                                     ## so far, can be "euclidian" or "model-cost"
 Weight_function = "inverse_square"  ## determines whether lineage weight is calculated as 1/distance or 1/(distance^2)
                                     ## so far, can be "inverse" or "inverse_square"
@@ -75,7 +75,9 @@ layers_to_delete.append("all_points_buf")
 ## from the points shapefile, get a list of the lineages
 print "Lineage list\n"
 lineage_list = LineageFunctions.getFieldValues(points,Lineage_field_name)
-print lineage_list
+print "Lineages:"
+for lineage in lineage_list:
+    print "   ", lineage
 
 #calculate the extent for weight grids
 points_properties = arcpy.Describe(points)
@@ -99,7 +101,7 @@ layers_to_delete.append("lin_lyr")
 print "\nLooping through the lineages in " + species_name + " to generate weight grids\n"
 count = 0
 
-for lineage in lineage_list:
+for lineage in lineage_list[2:]:
     count = count + 1
 
     # select points for the current lineage
@@ -113,7 +115,8 @@ for lineage in lineage_list:
     if Distance_method == "model-cost":                                   ## STEP 5b
         ## calculates the least cost distance to the nearest lineage point
         ## the result is written directly to lineage_dist_gridname
-        temp = arcpy.sa.PathAllocation(in_source_data="lin_lyr", in_cost_raster=maxent_model, out_distance_raster=lineage_dist_gridname)    
+        #temp = arcpy.sa.PathAllocation(in_source_data="lin_lyr", in_cost_raster=maxent_model, out_distance_raster=lineage_dist_gridname)
+        arcpy.sa.PathAllocation(in_source_data="lin_lyr", in_cost_raster=maxent_model, out_distance_raster=lineage_dist_gridname)    
         lin_dist = arcpy.sa.Raster(lineage_dist_gridname)
         layers_to_delete.append(lineage_dist_gridname)
 
@@ -124,6 +127,7 @@ for lineage in lineage_list:
 
     # unselect lineage points
     arcpy.SelectLayerByAttribute_management("lin_lyr", "CLEAR_SELECTION")
+    del(temp)
 
     # create a weight layer for the current lineage
     print "creating weight layer for   lineage " + lineage    
@@ -165,6 +169,8 @@ for lineage in lineage_list:                                ## STEPS 9 and 10
 # and finally, delete temporary layers
 print "\nAnalysis completed - now deleting temporary data."
 for layer in layers_to_delete:
-    arcpy.Delete_management(layer)
-    print layer + " deleted"
-                    
+    try:
+        arcpy.Delete_management(layer)
+        print layer + " deleted"
+    except:
+        print layer + " NOT deleted"        
