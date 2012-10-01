@@ -36,8 +36,8 @@ sys.path.append("C:\\Users\\u3579238\Work\Phylofest\\")
 import LineageFunctions
 
 # PARAMETERS ###
-species_name = "Diporiphora_bilineata_group"   # of course this would not be a poarameter in the multi-species version
-points = "C:\\Users\\u3579238\Work\Phylofest\\Diporiphora_seq.shp"  # sequenced locations point shapefile
+species_name = "Diporiphora_bilineata_group"   # of course this would not be a parameter in the multi-species version
+points = "C:\\Users\\u3579238\Work\Phylofest\\Lampropholis_delicata_seq.shp"  # sequenced locations point shapefile
 output_location = "C:\\Users\\u3579238\Work\Phylofest\\Diporiphora_test.gdb"
 maxent_model = "C:\\Users\\u3579238\Work\Phylofest\\Diporiphora_test.gdb\\D_bilineata_grp_maxent"
 buffer_dist = 4                                                               # the buffer distance in degrees
@@ -101,7 +101,7 @@ layers_to_delete.append("lin_lyr")
 print "\nLooping through the lineages in " + species_name + " to generate weight grids\n"
 count = 0
 
-for lineage in lineage_list[2:]:
+for lineage in lineage_list:
     count = count + 1
 
     # select points for the current lineage
@@ -115,8 +115,7 @@ for lineage in lineage_list[2:]:
     if Distance_method == "model-cost":                                   ## STEP 5b
         ## calculates the least cost distance to the nearest lineage point
         ## the result is written directly to lineage_dist_gridname
-        #temp = arcpy.sa.PathAllocation(in_source_data="lin_lyr", in_cost_raster=maxent_model, out_distance_raster=lineage_dist_gridname)
-        arcpy.sa.PathAllocation(in_source_data="lin_lyr", in_cost_raster=maxent_model, out_distance_raster=lineage_dist_gridname)    
+        temp = arcpy.sa.PathAllocation(in_source_data="lin_lyr", in_cost_raster=maxent_model, out_distance_raster=lineage_dist_gridname)
         lin_dist = arcpy.sa.Raster(lineage_dist_gridname)
         layers_to_delete.append(lineage_dist_gridname)
 
@@ -127,7 +126,6 @@ for lineage in lineage_list[2:]:
 
     # unselect lineage points
     arcpy.SelectLayerByAttribute_management("lin_lyr", "CLEAR_SELECTION")
-    del(temp)
 
     # create a weight layer for the current lineage
     print "creating weight layer for   lineage " + lineage    
