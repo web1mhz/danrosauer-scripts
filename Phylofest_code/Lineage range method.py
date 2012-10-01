@@ -26,7 +26,7 @@
 
 ## All of the above could be nested within a loop that iterates through species.
 
-import arcpy, sys, os
+import arcpy, sys, os, math
 from arcpy import env
 import arcpy.sa
 arcpy.CheckOutExtension("Spatial")
@@ -40,10 +40,10 @@ species_name = "Lampropholis_delicata"   # of course this would not be a poarame
 points = "C:\\Users\\u3579238\Work\Phylofest\\Lampropholis_delicata_seq.shp"  # sequenced locations point shapefile
 output_location = "C:\\Users\\u3579238\Work\Phylofest\\L_delicata.gdb"
 maxent_model = "C:\\Users\\u3579238\Work\Phylofest\\Lampropholis_delicata.gdb\\Lampropholis_delicata_envmod"
-buffer_dist = 5                                                               # the buffer distance in degrees
+buffer_dist = 4                                                               # the buffer distance in degrees
 additional_buffer = 0  ## how much (as a proportion) the output grids should extend beyond the buffered points
 grid_resolution = 0.01
-Australia_extent = arcpy.Extent(112,-44,160,-8)
+Australia_extent = arcpy.Extent(112,-44,154,-8.5)
 Lineage_field_name = "Lineage"
 Distance_method = "euclidian"       ## determines whether distance is calculated as euclidean or model-weighted cost distance
                                     ## so far, can be "euclidian" or "model-cost"
@@ -58,9 +58,10 @@ print "\nStarting " + species_name + "\n"
 # set the environment
 env.workspace  = output_location
 env.snapRaster = maxent_model
+env.mask = maxent_model
 env.extent = Australia_extent
 
-maxent_model = arcpy.sa.Raster(maxent_model)
+maxent_raster = arcpy.sa.Raster(maxent_model)
 
 # start a list of layers to delete at the end
 layers_to_delete = []
@@ -79,15 +80,23 @@ print lineage_list
 #calculate the extent for weight grids
 points_properties = arcpy.Describe(points)
 points_extent = points_properties.extent
-extent_buffer = (1 + additional_buffer)
-new_extent = [points_extent.xmin - extent_buffer, points_extent.ymin - extent_buffer, points_extent.xmax + extent_buffer, points_extent.ymax + extent_buffer]
-env.extent = arcpy.Extent(new_extent) # set the analysis extent
+buffer_ratio = (1 + additional_buffer)
+extent_buffer = buffer_dist * buffer_ratio
+
+# new extent is the same as points layer + a buffer
+# but where the extended buffer goes beyond the extent of Australia, limit to Australia
+xmin=math.floor(max([points_extent.xmin - extent_buffer,Australia_extent.XMin]))
+ymin=math.floor(max([points_extent.ymin - extent_buffer,Australia_extent.YMin]))
+xmax=math.ceil(min([points_extent.xmax + extent_buffer,Australia_extent.XMax]))
+ymax=math.ceil(min([points_extent.ymax + extent_buffer,Australia_extent.YMax]))
+env.extent = arcpy.Extent(xmin,ymin,xmax,ymax)
+#env.extent = arcpy.Extent(new_extent) # set the analysis extent
 
 ## generate a weight grid for each lineage  START OF STEP 4
 arcpy.env.mask = "all_points_buf"
 arcpy.MakeFeatureLayer_management(points,"lin_lyr")
 layers_to_delete.append("lin_lyr")
-print "Looping through the lineages in " + species_name + " to generate weight grids\n"
+print "\nLooping through the lineages in " + species_name + " to generate weight grids\n"
 count = 0
 
 for lineage in lineage_list:
@@ -111,7 +120,7 @@ for lineage in lineage_list:
     else:
         lin_dist = arcpy.sa.EucDistance("lin_lyr","",grid_resolution)     ## STEP 5a
         lin_dist.save(lineage_dist_gridname)  ## once the code is working, no need to save this layer
-        layers_to_delete.append(lineage_dist_gridname)
+        layers_to_delete.append(str(lineage_dist_gridname))
 
     # unselect lineage points
     arcpy.SelectLayerByAttribute_management("lin_lyr", "CLEAR_SELECTION")
@@ -137,6 +146,8 @@ for lineage in lineage_list:
     else:
         weight_sum = weight_sum + lin_weight
 
+print "\n"
+
 # calculate the scaled weight for each lineage, so they sum to a) 1 or b) the model suitability
 for lineage in lineage_list:                                ## STEPS 9 and 10
     print "creating final scaled weight grid for lineage " + lineage
@@ -144,7 +155,7 @@ for lineage in lineage_list:                                ## STEPS 9 and 10
     lin_weight = arcpy.sa.Raster(lineage_weight_gridname)
 
     if Scale_to == "model":
-        lin_weight_scaled = (lin_weight / weight_sum) * maxent_model
+        lin_weight_scaled = (lin_weight / weight_sum) * maxent_raster
     else:
         lin_weight_scaled = (lin_weight / weight_sum)
 
