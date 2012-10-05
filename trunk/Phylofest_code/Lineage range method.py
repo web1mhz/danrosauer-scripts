@@ -37,7 +37,7 @@ import LineageFunctions
 
 # PARAMETERS ###
 species_name = "Diporiphora_bilineata_group"   # of course this would not be a parameter in the multi-species version
-points = "C:\\Users\\u3579238\Work\Phylofest\\Lampropholis_delicata_seq.shp"  # sequenced locations point shapefile
+points = "C:\\Users\\u3579238\Work\Phylofest\\Diporiphora_seq.shp"  # sequenced locations point shapefile
 output_location = "C:\\Users\\u3579238\Work\Phylofest\\Diporiphora_test.gdb"
 maxent_model = "C:\\Users\\u3579238\Work\Phylofest\\Diporiphora_test.gdb\\D_bilineata_grp_maxent"
 buffer_dist = 4                                                               # the buffer distance in degrees
@@ -45,16 +45,16 @@ additional_buffer = 0  ## how much (as a proportion) the output grids should ext
 grid_resolution = 0.01
 Australia_extent = arcpy.Extent(112,-44,154,-8.5)
 Lineage_field_name = "Lineage"
-Distance_method = "model-cost"       ## determines whether distance is calculated as euclidean or model-weighted cost distance
+Distance_method = "euclidian"       ## determines whether distance is calculated as euclidean or model-weighted cost distance
                                     ## so far, can be "euclidian" or "model-cost"
 Weight_function = "inverse_square"  ## determines whether lineage weight is calculated as 1/distance or 1/(distance^2)
                                     ## so far, can be "inverse" or "inverse_square"
-Min_weight_threshold = 0            ## weights below this for any layer are set to 0.  If the value here is 0, then no threshold is applied
+Min_weight_threshold = 0.02         ## weights below this for any layer are set to 0.  If the value here is 0, then no threshold is applied
 Scale_to = "model"                  ## determines whether lineage weights sum to the model suitability or to 1
-
+                                    ## can be "model" or "one"
+                                    
 print "\nStarting " + species_name + "\n"
 
-                                    ## can be "model" or "one"
 # set the environment
 env.workspace  = output_location
 env.snapRaster = maxent_model
@@ -115,8 +115,10 @@ for lineage in lineage_list:
     if Distance_method == "model-cost":                                   ## STEP 5b
         ## calculates the least cost distance to the nearest lineage point
         ## the result is written directly to lineage_dist_gridname
-        temp = arcpy.sa.PathAllocation(in_source_data="lin_lyr", in_cost_raster=maxent_model, out_distance_raster=lineage_dist_gridname)
-        lin_dist = arcpy.sa.Raster(lineage_dist_gridname)
+        #temp = arcpy.sa.PathAllocation(in_source_data="lin_lyr", in_cost_raster=maxent_model, out_distance_raster=lineage_dist_gridname)
+        distRaster = arcpy.sa.PathDistance("lin_lyr",maxent_model)
+        #lin_dist = arcpy.sa.Raster(lineage_dist_gridname)
+        distRaster.save(lineage_dist_gridname)
         layers_to_delete.append(lineage_dist_gridname)
 
     else:
@@ -137,7 +139,9 @@ for lineage in lineage_list:
 
     # apply a threshold to each weight grid                 ## STEP 7
     if Min_weight_threshold > 0:
-        lin_weight = Con(lin_weight, lin_weight, 0, "VALUE >= Min_weight_threshold")
+        where_clause = '"VALUE" >= ' + str(Min_weight_threshold)
+        lin_weight = arcpy.sa.Con(lin_weight, lin_weight, 0, where_clause)
+        #lin_weight = arcpy.sa.Con(lin_weight, lin_weight, 0, "VALUE >= Min_weight_threshold")
 
     lin_weight.save(lineage_weight_gridname)  ## this layer should be kept until the final weights are calculated
     layers_to_delete.append(lineage_weight_gridname)
@@ -171,4 +175,6 @@ for layer in layers_to_delete:
         arcpy.Delete_management(layer)
         print layer + " deleted"
     except:
-        print layer + " NOT deleted"        
+        print layer + " NOT deleted"
+        
+print "\n   ************\n   * FINISHED *\n   ************"
