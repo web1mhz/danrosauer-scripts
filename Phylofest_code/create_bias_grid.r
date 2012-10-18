@@ -7,12 +7,15 @@ geogdist = function(x1,y1,x2,y2) {
 }
 
 
+####### Parameters  #######
 background_samplecount = 10000
-s = 1.5  # the standard deviation for the gaussian distance function
+s = 1.0  # the standard deviation for the gaussian distance 
+output.filename="bias_grid.asc"
 
-#define directories
+#directories
 work.dir = 'C:/Users/u3579238/Work/Phylofest/U_lithomoda/'; setwd(work.dir)
 clipped.bioclim = 'C:/Users/u3579238/Work/Phylofest/U_lithomoda/grids_clipped/'
+###########################
 
 #define some basic data
 bio1.filename <- paste(clipped.bioclim,'bio1_msk.asc',sep="")
@@ -48,6 +51,6 @@ pixels.env <- merge(pixels.env,pixels.combined,all.x=TRUE)
 pixels.env <- pixels.env[c("y","x","gauss_dist")]
 
 cat("\nAbout to write grid to file\n")
-dataframe2asc(pixels.env,"bias_grid.asc")
+dataframe2asc(pixels.env,output.filename)
 
 cat("\nFinished\n")
