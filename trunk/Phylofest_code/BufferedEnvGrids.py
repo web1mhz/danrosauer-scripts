@@ -5,11 +5,11 @@ arcpy.CheckOutExtension("Spatial")
 arcpy.env.overwriteOutput=True
 
 ### PARAMETERS ###
-
 points = "c:\\Users\\u3579238\\Work\Phylofest\\Diporiphora_ALA.shp"  # set the point shapefile
 buffer_dist = 4   # the buffer distance
 source_location = "c:\\Users\\u3579238\\GISData\\EnvironmentGrids\\AusGDMGrids\\maskedgrids\\" # where the original environment grids are stored
 target_location = "c:\\Users\\u3579238\\Work\\Phylofest\\Diporiphora_grids_clipped\\" # where the clipped grids go
+##################
 
 # create the buffer grid and set as a mask
 env.workspace = target_location
