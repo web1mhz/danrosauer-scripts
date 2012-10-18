@@ -45,7 +45,7 @@ additional_buffer = 0  ## how much (as a proportion) the output grids should ext
 grid_resolution = 0.01
 Australia_extent = arcpy.Extent(112,-44,154,-8.5)
 Lineage_field_name = "Lineage"
-Distance_method = "euclidian"       ## determines whether distance is calculated as euclidean or model-weighted cost distance
+Distance_method = "model-cost"       ## determines whether distance is calculated as euclidean or model-weighted cost distance
                                     ## so far, can be "euclidian" or "model-cost"
 Weight_function = "inverse_square"  ## determines whether lineage weight is calculated as 1/distance or 1/(distance^2)
                                     ## so far, can be "inverse" or "inverse_square"
@@ -116,9 +116,9 @@ for lineage in lineage_list:
         ## calculates the least cost distance to the nearest lineage point
         ## the result is written directly to lineage_dist_gridname
         #temp = arcpy.sa.PathAllocation(in_source_data="lin_lyr", in_cost_raster=maxent_model, out_distance_raster=lineage_dist_gridname)
-        distRaster = arcpy.sa.PathDistance("lin_lyr",maxent_model)
+        lin_dist = arcpy.sa.PathDistance("lin_lyr",maxent_model)
         #lin_dist = arcpy.sa.Raster(lineage_dist_gridname)
-        distRaster.save(lineage_dist_gridname)
+        lin_dist.save(lineage_dist_gridname)
         layers_to_delete.append(lineage_dist_gridname)
 
     else:
