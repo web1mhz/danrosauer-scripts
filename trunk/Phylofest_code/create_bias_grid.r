@@ -18,12 +18,12 @@ samples.filename  <- 'Diporiphora_all_maxent.csv'
 env.filename      <- 'C:/Users/u3579238/Work/Phylofest/Diporiphora/Diporiphora_grids_clipped/bio1_msk.asc'
 
 #outputs
-output.filename   <- "bias_grid.asc"
+output.filename   <- "bias_grid_3deg.asc"
 
 #settings
 background_samplecount <- 20000
 #s <- 100  # the standard deviation for the gaussian distance in kilometres
-s <- 2  # the standard deviation for the gaussian distance in degrees
+s <- 3  # the standard deviation for the gaussian distance in degrees
 ################################
 
 setwd(work.dir)
