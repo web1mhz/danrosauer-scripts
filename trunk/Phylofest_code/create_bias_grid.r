@@ -11,14 +11,16 @@ geogdist = function(x1,y1,x2,y2) {
 
 ########## Parameters ##########
 #inputs
-work.dir          <- 'C:/Users/u3579238/Work/Phylofest/Diporiphora/'
+taxon_name        <- "Saproscincus"
+base.dir = "C:/Users/u3579238/work/Phylofest/Models/skinks/"
+samples.filename = paste("species_models/clipped_grids/",taxon_name,"/sites_temp.csv",sep="")
+lat_column=1
+long_column=2
 
-# expects column 2= latitude, column 3 = longitude
-samples.filename  <- 'Diporiphora_all_maxent.csv'                     
-env.filename      <- 'C:/Users/u3579238/Work/Phylofest/Diporiphora/Diporiphora_grids_clipped/bio1_msk.asc'
+env.filename      <- "species_models/clipped_grids/Saproscincus/bio1_msk.asc"
 
 #outputs
-output.filename   <- "bias_grid_3deg.asc"
+output.filename   <- paste("species_models/bias_grids/",taxon_name,"/bias_grid_3deg.asc",sep="")
 
 #settings
 background_samplecount <- 20000
@@ -26,8 +28,10 @@ background_samplecount <- 20000
 s <- 3  # the standard deviation for the gaussian distance in degrees
 ################################
 
+work.dir       <- paste(base.dir,"species_models/bias_files",sep="")
 setwd(work.dir)
 
+env.filename  <- paste(base.dir,env.filename,sep="")
 grid.env      <- read.asc(env.filename)
 rowcount.env  <- attributes(grid.env)$dim[2]
 colcount.env  <- attributes(grid.env)$dim[1]
@@ -49,8 +53,9 @@ system("del envtemp.asc")
 system("rm envtemp.asc")
 
 #read in sample sites and make a raster
-sample_sites <- read.csv(samples.filename)
-sample_sites <- sample_sites[c(3,2)]
+samples.file <- paste(base.dir,samples.filename,sep="")
+sample_sites <- read.csv(samples.file)
+sample_sites <- sample_sites[c(long_column,lat_column)]
 sample_sites[,3] <- 1
 
 grid.env.att <- attributes(grid.env)
@@ -62,7 +67,7 @@ mat <- matrix(NA,nrow=colcount.env,ncol=rowcount.env)  #strange.  I have reveres
 grid.sample <- as.asc(mat,xll=env.xll,yll=env.yll,cellsize=env.cellsize)
 grid.sample <- put.data(sample_sites,grid.sample)
 
-samplegrid.filename <- paste(work.dir,sub(".csv",".asc",samples.filename),sep="")
+samplegrid.filename <- paste(base.dir,sub(".csv",".asc",samples.filename),sep="")
 write.asc(grid.sample,samplegrid.filename)
 
 pixels.sample <- asc2dataframe(samplegrid.filename)
