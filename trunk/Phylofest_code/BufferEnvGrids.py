@@ -15,12 +15,11 @@ source_location = "c:\\Users\\u3579238\\GISData\\EnvironmentGrids\\AusGDMGrids\\
 target_location = "species_models\\clipped_grids\\Saproscincus\\" # where the clipped grids go
 ##################
 
-# create the buffer grid and set as a mask
+# create the output folder
 target_location = base_dir + target_location
 if not os.path.exists(target_location):
     os.makedirs(target_location)
 
-#target_location_esri = string.replace(target_location,"\\","/")  # the same as target location but with the slashes changed from \\ to /
 env.workspace = target_location
 env.snapRaster= source_location + "bio1"
 

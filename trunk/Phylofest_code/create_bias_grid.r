@@ -20,10 +20,10 @@ long_column=2
 env.filename      <- "species_models/clipped_grids/Saproscincus/bio1_msk.asc"
 
 #outputs
-output.filename   <- paste("species_models/bias_grids/",taxon_name,"/bias_grid_3deg.asc",sep="")
+output.filename   <- paste("species_models/bias_grids/",taxon_name,"/bias_grid_test.asc",sep="")
 
 #settings
-background_samplecount <- 20000
+background_samplecount <- 20
 #s <- 100  # the standard deviation for the gaussian distance in kilometres
 s <- 3  # the standard deviation for the gaussian distance in degrees
 ################################
@@ -111,6 +111,7 @@ pixels.env <- merge(pixels.env,pixels.combined,all.x=TRUE)
 pixels.env <- pixels.env[c("y","x","gauss_dist")]
 
 cat("\nAbout to write grid to file\n")
+output.filename = paste(base.dir,output.filename,sep="")
 dataframe2asc(pixels.env,output.filename)
 
 cat("\nFinished\n")
