@@ -26,7 +26,7 @@
 
 ## All of the above could be nested within a loop that iterates through species.
 
-import arcpy, sys, os, math, numpy, csv, os
+import arcpy, sys, os, math, numpy, csv, os, string
 from arcpy import env
 import arcpy.sa
 arcpy.CheckOutExtension("Spatial")
@@ -36,17 +36,15 @@ sys.path.append("C:\\Users\\u3579238\Work\Phylofest\\")
 import LineageFunctions
 
 ### PARAMETERS ###
-
+genus = "Saproscincus"
 base_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\skinks\\"
-sequence_site_filename = "sequence_sites\\Saproscincus_lin_loc.csv"
-target_location = "lineage_models\\"  # where the lineage model grids and working data
+sequence_site_filename = base_dir + "sequence_sites\\Saproscincus_lin_loc.csv"
+target_location = base_dir + "lineage_models\\" + genus + "\\"  # where the lineage model grids and working data
 ##################
 
 # PARAMETERS ###  LEAVE FOR NOW BUT SOME WILL BE SET ITERATIVELY
-species_name = "Diporiphora_bilineata_group"   # of course this would not be a parameter in the multi-species version
-points = "C:\\Users\\u3579238\Work\Phylofest\\Diporiphora_seq.shp"  # sequenced locations point shapefile
-output_location = "C:\\Users\\u3579238\Work\Phylofest\\Diporiphora_test.gdb"
-maxent_model = "C:\\Users\\u3579238\Work\Phylofest\\Diporiphora_test.gdb\\D_bilineata_grp_maxent"
+output_gdb_name = "results.gdb"
+maxent_model_base = base_dir + "species_models\\maxent\\"
 buffer_dist = 4                                                               # the buffer distance in degrees
 additional_buffer = 0  ## how much (as a proportion) the output grids should extend beyond the buffered points
 grid_resolution = 0.01
@@ -60,10 +58,21 @@ Min_weight_threshold = 0.02         ## weights below this for any layer are set 
 Scale_to = "model"                  ## determines whether lineage weights sum to the model suitability or to 1
                                     ## can be "model" or "one"
                                     
+# create the output geodatabase if needed
+if not os.path.exists(target_location):
+    os.makedirs(target_location)
+try:
+    target_location_ESRI = string.replace(target_location,"\\","/")
+    arcpy.CreateFileGDB_management(target_location_ESRI, "results.gdb")
+    
+except:
+    print "File geodatabase "+target_location+ " " + output_gdb_name + " already exists\nor creation failed"
+
 # Load the sequence site data
 print "\nLoading the sequenced sites\n"
-sequence_site_filename = base_dir + sequence_site_filename
 
+# make each column being used, into a list
+# and also create lists of unique AnalysisGroups and Lineages
 with open(sequence_site_filename, 'rb') as csvfile:
     sequence_csv = csv.reader(csvfile, delimiter=',')
     rownum = 0
@@ -73,6 +82,8 @@ with open(sequence_site_filename, 'rb') as csvfile:
     Lineage = []
     Lat=[]
     Long=[]
+    GroupList=[]
+    GroupLineageList =[]
     
     for row in sequence_csv:
         # Save header row.
@@ -80,15 +91,21 @@ with open(sequence_site_filename, 'rb') as csvfile:
             header = row
             rownum += 1
         else:
-            rowdata.append(row)
-            Species.append(row[2])
-            ModelGroup.append(row[3])
-            Lineage.append(row[4])
+
             try:        # if the lat or long can't be converted to a number, then skip that row, by not incremeting rownum
                 Lat.append(float(row[5]))
                 try:
+                    # code gets to here for valid lat and long, so other steps can go here too
                     print rownum
                     Long.append(float(row[6]))
+                    rowdata.append(row)
+                    Species.append(row[2])
+                    ModelGroup.append(row[3])
+                    Lineage.append(row[4])                    
+                    if row[3] not in GroupList:
+                        GroupList.append(row[3])
+                    if row[1:5] not in GroupLineageList:
+                        GroupLineageList.append(row[1:5])
                     rownum += 1
                 except:
                     print "skipped ",rownum
@@ -96,138 +113,160 @@ with open(sequence_site_filename, 'rb') as csvfile:
                 print "skipped 2 ",rownum
     # so now we have a list for each column, excluding rows with null coordinates
 
-NEXT STEP, GET THE UNIQUE COMBINATIONS OF MODELGROUP AND LINEAGE
-
-#and combine them
-#sites = numpy.append(sequence_sites,sequenced_sites,0)
-#sites = sites[(sites[:,1] > 100) & (sites[:,0] > -45)]  #removes null coordinates and some wrong ones
-
-
-
-
-
-print "\nStarting " + species_name + "\n"
-
-# set the environment
-env.workspace  = output_location
-env.snapRaster = maxent_model
-env.mask = maxent_model
+# set the geoprocessing environment
+env.workspace  = target_location_ESRI + output_gdb_name
 env.extent = Australia_extent
 
-maxent_raster = arcpy.sa.Raster(maxent_model)
-
-# start a list of layers to delete at the end
-layers_to_delete = []
-
-## Buffer the full set of sequenced locations   STEPS 1 & 2
-print "Buffering all points\n"
-point_buffer = arcpy.sa.EucDistance(points,buffer_dist,grid_resolution)
-point_buffer.save("all_points_buf")  ## once the code is working, no need to save this layer
-layers_to_delete.append("all_points_buf")
-
-## from the points shapefile, get a list of the lineages
-print "Lineage list\n"
-lineage_list = LineageFunctions.getFieldValues(points,Lineage_field_name)
-print "Lineages:"
-for lineage in lineage_list:
-    print "   ", lineage
-
-#calculate the extent for weight grids
-points_properties = arcpy.Describe(points)
-points_extent = points_properties.extent
-buffer_ratio = (1 + additional_buffer)
-extent_buffer = buffer_dist * buffer_ratio
-
-# new extent is the same as points layer + a buffer
-# but where the extended buffer goes beyond the extent of Australia, limit to Australia
-xmin=math.floor(max([points_extent.xmin - extent_buffer,Australia_extent.XMin]))
-ymin=math.floor(max([points_extent.ymin - extent_buffer,Australia_extent.YMin]))
-xmax=math.ceil(min([points_extent.xmax + extent_buffer,Australia_extent.XMax]))
-ymax=math.ceil(min([points_extent.ymax + extent_buffer,Australia_extent.YMax]))
-env.extent = arcpy.Extent(xmin,ymin,xmax,ymax)
-#env.extent = arcpy.Extent(new_extent) # set the analysis extent
-
-## generate a weight grid for each lineage  START OF STEP 4
-arcpy.env.mask = "all_points_buf"
-arcpy.MakeFeatureLayer_management(points,"lin_lyr")
-layers_to_delete.append("lin_lyr")
-print "\nLooping through the lineages in " + species_name + " to generate weight grids\n"
-count = 0
-
-for lineage in lineage_list:
-    count = count + 1
-
-    # select points for the current lineage
-    where_clause = '"' + Lineage_field_name + '" = \'' + lineage + '\''
-    arcpy.SelectLayerByAttribute_management("lin_lyr", "NEW_SELECTION", where_clause)
-
-    # create a distance layer for the current lineage
-    print "creating distance layer for lineage " + lineage
-    lineage_dist_gridname = "dist_lineage_" + lineage
+# Make XY Event Layer
+try:
+    spRef = "GEOGCS['GCS_WGS_1984',DATUM['D_WGS_1984',SPHEROID['WGS_1984',6378137.0,298.257223563]],PRIMEM['Greenwich',0.0],UNIT['Degree',0.0174532925199433]]"
+    points_layer = "sequenced_sites"
+    #arcpy.MakeXYEventLayer_management(sequence_site_filename, "long", "lat", target_location_ESRI+points_layer, spRef)
+    layer_result = arcpy.MakeXYEventLayer_management(sequence_site_filename, "long", "lat", points_layer, spRef)
+    points_layer = layer_result[0]
+    #arcpy.SaveToLayerFile_management(points_layer, "sites", "ABSOLUTE")    
+except:
+   # If an error occurred print the message to the screen
+    print arcpy.GetMessages()
     
-    if Distance_method == "model-cost":                                   ## STEP 5b
-        ## calculates the least cost distance to the nearest lineage point
-        ## the result is written directly to lineage_dist_gridname
-        #temp = arcpy.sa.PathAllocation(in_source_data="lin_lyr", in_cost_raster=maxent_model, out_distance_raster=lineage_dist_gridname)
-        lin_dist = arcpy.sa.PathDistance("lin_lyr",maxent_model)
-        #lin_dist = arcpy.sa.Raster(lineage_dist_gridname)
-        lin_dist.save(lineage_dist_gridname)
-        layers_to_delete.append(lineage_dist_gridname)
+# export the layer as a feature class
+outLocation = env.workspace
+outFeatureClass = "seq_points"
+arcpy.FeatureClassToFeatureClass_conversion(points_layer, outLocation, outFeatureClass)
+points_fc = outLocation + "/" + outFeatureClass
 
-    else:
-        lin_dist = arcpy.sa.EucDistance("lin_lyr","",grid_resolution)     ## STEP 5a
-        lin_dist.save(lineage_dist_gridname)  ## once the code is working, no need to save this layer
-        layers_to_delete.append(str(lineage_dist_gridname))
+# Loop through the list of Model Groups
+for group in GroupList:
+    
+    print "\nStarting group " + group + "\n"
 
-    # unselect lineage points
-    arcpy.SelectLayerByAttribute_management("lin_lyr", "CLEAR_SELECTION")
+    # set the environment
+    maxent_model = maxent_model_base + genus + "\\" + string.replace(group," ","_") + ".asc"
+    env.snapRaster = maxent_model
+    env.mask = maxent_model
 
-    # create a weight layer for the current lineage
-    print "creating weight layer for   lineage " + lineage    
-    lineage_weight_gridname = "weight_lineage_" + lineage
-    if Weight_function == "inverse_square":                 ## STEP 6b
-        lin_weight = 1/(lin_dist ** 2)
-    else:
-        lin_weight = 1/lin_dist                             ## STEP 6a       this comes 2nd, as it is the default, for any other values of Weight_function
+    # define spatial data for this group
+    maxent_raster = arcpy.sa.Raster(maxent_model)
+    groupDefQuery = "[ModelGroup] = '" + group + "'"
+    points_layer.definitionQuery = groupDefQuery
 
-    # apply a threshold to each weight grid                 ## STEP 7
-    if Min_weight_threshold > 0:
-        where_clause = '"VALUE" >= ' + str(Min_weight_threshold)
-        lin_weight = arcpy.sa.Con(lin_weight, lin_weight, 0, where_clause)
-        #lin_weight = arcpy.sa.Con(lin_weight, lin_weight, 0, "VALUE >= Min_weight_threshold")
+    # start a list of layers to delete at the end
+    layers_to_delete = []
 
-    lin_weight.save(lineage_weight_gridname)  ## this layer should be kept until the final weights are calculated
-    layers_to_delete.append(lineage_weight_gridname)
+    ## Buffer the full set of sequenced locations   STEPS 1 & 2
+    
+    print "Buffering all points for " + group + "\n"
+    point_buffer = arcpy.sa.EucDistance(points_layer,buffer_dist,grid_resolution)
 
-    # calculate the sum of weights for each pixel to scale values later  ## STEP 8
-    if count == 1:
-        weight_sum = lin_weight
-    else:
-        weight_sum = weight_sum + lin_weight
+    ## get a list of the lineages in this group
+    lineage_list=[]
+    print "Lineages in " + group + ":"
+    for row in GroupLineageList:
+        if row[2] == group:
+            lineage_list.append(row[3])
+            print "   ", row[3]
+            
+    # get the extent of the points for the model group
+    xrange=LineageFunctions.getFieldMinMax(points_layer,"long")
+    xmin=xrange[0]
+    xmax=xrange[1]
+    yrange=LineageFunctions.getFieldMinMax(points_layer,"lat")
+    ymin=yrange[0]
+    ymax=yrange[1]
+    buffer_ratio = (1 + additional_buffer)
+    extent_buffer = buffer_dist * buffer_ratio
 
-print "\n"
+    # new extent is the same as points layer + a buffer
+    # but where the extended buffer goes beyond the extent of Australia, limit to Australia
+    xmin=math.floor(max([xmin - extent_buffer,Australia_extent.XMin]))
+    ymin=math.floor(max([ymin - extent_buffer,Australia_extent.YMin]))
+    xmax=math.ceil(min([xmax + extent_buffer,Australia_extent.XMax]))
+    ymax=math.ceil(min([ymax + extent_buffer,Australia_extent.YMax]))
+    env.extent = arcpy.Extent(xmin,ymin,xmax,ymax)
 
-# calculate the scaled weight for each lineage, so they sum to a) 1 or b) the model suitability
-for lineage in lineage_list:                                ## STEPS 9 and 10
-    print "creating final scaled weight grid for lineage " + lineage
-    lineage_weight_gridname = "weight_lineage_" + lineage
-    lin_weight = arcpy.sa.Raster(lineage_weight_gridname)
+    ## generate a weight grid for each lineage  START OF STEP 4
+    arcpy.env.mask = maxent_model
+    
+    ## get a selectable layer for the sequenced sites
+    lin_lyr = arcpy.MakeFeatureLayer_management(points_fc,"lineage_layer")[0]
 
-    if Scale_to == "model":
-        lin_weight_scaled = (lin_weight / weight_sum) * maxent_raster
-    else:
-        lin_weight_scaled = (lin_weight / weight_sum)
-
-    lineage_scaled_weight_name = "scaled_weight_lin" + lineage
-    lin_weight_scaled.save(lineage_scaled_weight_name)  ## THIS is a final layer to keep!
-
-# and finally, delete temporary layers
-print "\nAnalysis completed - now deleting temporary data."
-for layer in layers_to_delete:
-    try:
-        arcpy.Delete_management(layer)
-        print layer + " deleted"
-    except:
-        print layer + " NOT deleted"
+    print "\nLooping through the lineages in " + group + " to generate weight grids\n"
+    count = 0
+    
+    for lineage in lineage_list:
+        count += 1
+    
+        # redo definition query for the current lineage
+        where_clause = "'ModelGroup' = '" + group + "' and '" + Lineage_field_name + "' = '" + lineage + "'"
+        arcpy.SelectLayerByAttribute_management(lin_lyr, "NEW_SELECTION", where_clause)
+    
+        # create a distance layer for the current lineage
+        print "creating distance layer for lineage " + lineage
+        lineage_dist_gridname = "dist_lineage_" + string.replace(group," ","_") + "_" + lineage
         
-print "\n   ************\n   * FINISHED *\n   ************"
+        if Distance_method == "model-cost":                                   ## STEP 5b
+            ## calculates the least cost distance to the nearest lineage point
+            ## the result is written directly to lineage_dist_gridname
+            #temp = arcpy.sa.PathAllocation(in_source_data="lin_lyr", in_cost_raster=maxent_model, out_distance_raster=lineage_dist_gridname)
+            lin_dist = arcpy.sa.PathDistance(lin_lyr,maxent_model)
+            #lin_dist = arcpy.sa.Raster(lineage_dist_gridname)
+            lin_dist.save(lineage_dist_gridname)
+            layers_to_delete.append(lineage_dist_gridname)
+    
+        else:
+            lin_dist = arcpy.sa.EucDistance(lin_layer,"",grid_resolution)     ## STEP 5a
+            lin_dist.save(lineage_dist_gridname)  ## once the code is working, no need to save this layer
+            layers_to_delete.append(str(lineage_dist_gridname))
+    
+        # reset points definition to whole Model Group
+        arcpy.SelectLayerByAttribute_management(lin_lyr, "CLEAR_SELECTION")
+    
+        # create a weight layer for the current lineage
+        print "creating weight layer for   lineage " + lineage    
+        lineage_weight_gridname = "weight_lineage_" + lineage
+        if Weight_function == "inverse_square":                 ## STEP 6b
+            lin_weight = 1/(lin_dist ** 2)
+        else:
+            lin_weight = 1/lin_dist                             ## STEP 6a       this comes 2nd, as it is the default, for any other values of Weight_function
+    
+        # apply a threshold to each weight grid                 ## STEP 7
+        if Min_weight_threshold > 0:
+            where_clause = '"VALUE" >= ' + str(Min_weight_threshold)
+            lin_weight = arcpy.sa.Con(lin_weight, lin_weight, 0, where_clause)
+            #lin_weight = arcpy.sa.Con(lin_weight, lin_weight, 0, "VALUE >= Min_weight_threshold")
+    
+        lin_weight.save(lineage_weight_gridname)  ## this layer should be kept until the final weights are calculated
+        layers_to_delete.append(lineage_weight_gridname)
+    
+        # calculate the sum of weights for each pixel to scale values later  ## STEP 8
+        if count == 1:
+            weight_sum = lin_weight
+        else:
+            weight_sum = weight_sum + lin_weight
+    
+    print "\n"
+    
+    # calculate the scaled weight for each lineage, so they sum to a) 1 or b) the model suitability
+    for lineage in lineage_list:                                ## STEPS 9 and 10
+        print "creating final scaled weight grid for lineage " + lineage
+        lineage_weight_gridname = "weight_lineage_" + lineage
+        lin_weight = arcpy.sa.Raster(lineage_weight_gridname)
+    
+        if Scale_to == "model":
+            lin_weight_scaled = (lin_weight / weight_sum) * maxent_raster
+        else:
+            lin_weight_scaled = (lin_weight / weight_sum)
+    
+        lineage_scaled_weight_name = "scaled_weight_lin" + lineage
+        lin_weight_scaled.save(lineage_scaled_weight_name)  ## THIS is a final layer to keep!
+    
+    # and finally, delete temporary layers
+    print "\nAnalysis completed - now deleting temporary data."
+    for layer in layers_to_delete:
+        try:
+            arcpy.Delete_management(layer)
+            print layer + " deleted"
+        except:
+            print layer + " NOT deleted"
+            
+    print "\n   ****************\n   * FINISHED Model Group :",group ,"*\n   ****************"
