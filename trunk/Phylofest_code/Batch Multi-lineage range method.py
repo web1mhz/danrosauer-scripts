@@ -40,11 +40,9 @@ genus = "Saproscincus"
 base_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\skinks\\"
 sequence_site_filename = base_dir + "sequence_sites\\Saproscincus_lin_loc.csv"
 target_location = base_dir + "lineage_models\\" + genus + "\\"  # where the lineage model grids and working data
-##################
 
-# PARAMETERS ###  LEAVE FOR NOW BUT SOME WILL BE SET ITERATIVELY
 output_gdb_name = "results.gdb"
-maxent_model_base = base_dir + "species_models\\maxent\\"
+maxent_model_base = base_dir + "species_models\\maxent\\" + genus + "\\maxent_models.gdb"
 buffer_dist = 4                                                               # the buffer distance in degrees
 additional_buffer = 0  ## how much (as a proportion) the output grids should extend beyond the buffered points
 grid_resolution = 0.01
@@ -123,8 +121,7 @@ try:
     points_layer = "sequenced_sites"
     #arcpy.MakeXYEventLayer_management(sequence_site_filename, "long", "lat", target_location_ESRI+points_layer, spRef)
     layer_result = arcpy.MakeXYEventLayer_management(sequence_site_filename, "long", "lat", points_layer, spRef)
-    points_layer = layer_result[0]
-    #arcpy.SaveToLayerFile_management(points_layer, "sites", "ABSOLUTE")    
+    points_layer = layer_result[0] 
 except:
    # If an error occurred print the message to the screen
     print arcpy.GetMessages()
@@ -132,7 +129,10 @@ except:
 # export the layer as a feature class
 outLocation = env.workspace
 outFeatureClass = "seq_points"
-arcpy.FeatureClassToFeatureClass_conversion(points_layer, outLocation, outFeatureClass)
+try:
+    arcpy.FeatureClassToFeatureClass_conversion(points_layer, outLocation, outFeatureClass)
+except:
+    print "\n" + outFeatureClass + " could not be created, or already exists."
 points_fc = outLocation + "/" + outFeatureClass
 
 # Loop through the list of Model Groups
@@ -141,7 +141,7 @@ for group in GroupList:
     print "\nStarting group " + group + "\n"
 
     # set the environment
-    maxent_model = maxent_model_base + genus + "\\" + string.replace(group," ","_") + ".asc"
+    maxent_model = maxent_model_base + "\\" + string.replace(group," ","_")
     env.snapRaster = maxent_model
     env.mask = maxent_model
 
@@ -190,7 +190,7 @@ for group in GroupList:
     ## get a selectable layer for the sequenced sites
     lin_lyr = arcpy.MakeFeatureLayer_management(points_fc,"lineage_layer")[0]
 
-    print "\nLooping through the lineages in " + group + " to generate weight grids\n"
+    print "Looping through the lineages in " + group + " to generate weight grids\n"
     count = 0
     
     for lineage in lineage_list:
@@ -201,20 +201,19 @@ for group in GroupList:
         arcpy.SelectLayerByAttribute_management(lin_lyr, "NEW_SELECTION", where_clause)
     
         # create a distance layer for the current lineage
-        print "creating distance layer for lineage " + lineage
-        lineage_dist_gridname = "dist_lineage_" + string.replace(group," ","_") + "_" + lineage
+        print "Creating distance layer for lineage " + lineage
+        lineage_dist_gridname = "dist_" + string.replace(group," ","_") + "_" + lineage
         
         if Distance_method == "model-cost":                                   ## STEP 5b
             ## calculates the least cost distance to the nearest lineage point
             ## the result is written directly to lineage_dist_gridname
-            #temp = arcpy.sa.PathAllocation(in_source_data="lin_lyr", in_cost_raster=maxent_model, out_distance_raster=lineage_dist_gridname)
-            lin_dist = arcpy.sa.PathDistance(lin_lyr,maxent_model)
-            #lin_dist = arcpy.sa.Raster(lineage_dist_gridname)
+            model_cost = -1 * arcpy.sa.Ln(maxent_model)
+            lin_dist = arcpy.sa.PathDistance(lin_lyr,model_cost)
             lin_dist.save(lineage_dist_gridname)
             layers_to_delete.append(lineage_dist_gridname)
     
         else:
-            lin_dist = arcpy.sa.EucDistance(lin_layer,"",grid_resolution)     ## STEP 5a
+            lin_dist = arcpy.sa.EucDistance(lin_lyr,"",grid_resolution)     ## STEP 5a
             lin_dist.save(lineage_dist_gridname)  ## once the code is working, no need to save this layer
             layers_to_delete.append(str(lineage_dist_gridname))
     
@@ -223,7 +222,7 @@ for group in GroupList:
     
         # create a weight layer for the current lineage
         print "creating weight layer for   lineage " + lineage    
-        lineage_weight_gridname = "weight_lineage_" + lineage
+        lineage_weight_gridname = "weight_lin_" + group +"_" + lineage
         if Weight_function == "inverse_square":                 ## STEP 6b
             lin_weight = 1/(lin_dist ** 2)
         else:
@@ -233,7 +232,6 @@ for group in GroupList:
         if Min_weight_threshold > 0:
             where_clause = '"VALUE" >= ' + str(Min_weight_threshold)
             lin_weight = arcpy.sa.Con(lin_weight, lin_weight, 0, where_clause)
-            #lin_weight = arcpy.sa.Con(lin_weight, lin_weight, 0, "VALUE >= Min_weight_threshold")
     
         lin_weight.save(lineage_weight_gridname)  ## this layer should be kept until the final weights are calculated
         layers_to_delete.append(lineage_weight_gridname)
