@@ -12,6 +12,7 @@ base_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\skinks\\"
 maxent_model_base = base_dir + "species_models\\maxent\\" + genus + "\\"
 output_gdb_name = "maxent_models.gdb"
 sequence_site_filename = base_dir + "sequence_sites\\" + genus + "_lin_loc.csv"
+model_suffix = "_avg"
 
 ##################
 # create the output geodatabase if needed
@@ -52,9 +53,10 @@ with open(sequence_site_filename, 'rb') as csvfile:
                         GroupList.append(row[3])
                     rownum += 1
                 except:
-                    print "-"
+                    a=0 # just a do nothing line to keep the sytax working
             except:
-                print "."
+                a=0 # just a do nothing line to keep the sytax working
+                
     # so now we have a list for each column, excluding rows with null coordinates
 del Lat
 del Long
@@ -66,10 +68,10 @@ env.workspace  = model_gdb
 # Loop through the list of Model Groups
 for group in GroupList:
     
-    print group
+    print "\n" + group
 
     # import the maxent model result from ascii to ESRI gdb
-    maxent_model = maxent_model_base + "\\" + string.replace(group," ","_") + ".asc"
+    maxent_model = maxent_model_base + "\\" + string.replace(group," ","_") + model_suffix + ".asc"
     out_raster = model_gdb+"/" + string.replace(group," ","_")
     arcpy.ASCIIToRaster_conversion(maxent_model, out_raster, "FLOAT")
     print "\nImported " + string.replace(group," ","_") + ".asc" + " to " + out_raster
