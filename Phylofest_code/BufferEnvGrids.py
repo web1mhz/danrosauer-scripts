@@ -8,11 +8,14 @@ arcpy.env.overwriteOutput=True
 os.linesep ="\n"
 
 base_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\skinks\\"
-species_site_filename = "species_sites\\Saproscincus_ALA.csv"
-sequence_site_filename = "sequence_sites\\Saproscincus_lin_loc.csv"
-buffer_dist = 3.5   # the buffer distance
+species_site_filename = "species_sites\\Lampropholis_ALA.csv"
+sequence_site_filename = "sequence_sites\\Lampropholis_lin_loc.csv"
+buffer_dist = 2.5   # the buffer distance
 source_location = "c:\\Users\\u3579238\\GISData\\EnvironmentGrids\\AusGDMGrids\\maskedgrids\\" # where the original environment grids are stored
-target_location = "species_models\\clipped_grids\\Saproscincus\\" # where the clipped grids go
+target_location = "species_models\\clipped_grids\\Lampropholis\\" # where the clipped grids go
+
+# bioclim layers 1 to 19 are matched automatically.  Any other layers to use are listed here.
+extra_layers = ["twi","slope","geollmeanage"]
 ##################
 
 # create the output folder
@@ -28,7 +31,7 @@ species_site_filename = base_dir + species_site_filename
 
 try:     #removes coordinates where the 5th column (col num = 4) is not set to 1
     species_sites = numpy.genfromtxt(species_site_filename, delimiter=',',usecols = (1,2,4),names=True)
-    species_sites = species_sites[(species_sites[:,2] == 1),:2]  #removes coordinates where use is not set to 1
+    species_sites = species_sites[(species_sites[:,2] == 1),:2]  #removes coordinates where 'use' is not set to 1
 except:  # or if there is no 5th column, just loads 1,2 for x,y
     species_sites = numpy.genfromtxt(species_site_filename, delimiter=',',usecols = (1,2),names=True)
     
@@ -74,12 +77,12 @@ pointbuffer.save("point_buf")
 
 env.workspace = source_location
 arcpy.env.extent=arcpy.Extent(pointbuffer)
-datasets = arcpy.ListRasters("*bio*","GRID")
+datasets = arcpy.ListRasters("*","GRID")
 
 for dataset in datasets:
 
     #check if the name is a layer to use - in this case bio1 - bio19
-    if not ((str.isdigit(str(dataset[-2:])) and int(dataset[-2:]) > 19) or dataset == "bio15_580"):
+    if (dataset in extra_layers) or (dataset[0:3] == "bio" and (str.isdigit(str(dataset[-2:])) and int(dataset[-2:]) <= 19)):
                     
         # finally, extract the required part of the grid, and write it to specified folder, with a suffix
         maskedgrid = arcpy.sa.ExtractByMask(dataset,pointbuffer)
