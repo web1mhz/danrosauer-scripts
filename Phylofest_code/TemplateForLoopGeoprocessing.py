@@ -13,7 +13,7 @@ target_location = "c:\\Users\\u3579238\\GISData\\Helping\\Sally\\Env_grids_clipp
 
 # create the buffer grid and set as a mask
 env.workspace = target_location
-env.snapRaster= source_location + "bio1"
+env.snapRaster= source_location + "bio01"
 
 #get the points layer extent, and calculate the buffer extent
 points_properties = arcpy.Describe(points)
@@ -31,7 +31,7 @@ datasets = arcpy.ListRasters("*bio*","GRID")
 
 for dataset in datasets:
 
-    #check if the name is a layer to use - in this case bio1 - bio19
+    #check if the name is a layer to use - in this case bio01 - bio19
     if not ((str.isdigit(str(dataset[-2:])) and int(dataset[-2:]) > 19) or dataset == "bio15_580"):
                     
         # finally, extract the required part of the grid, and write it to specified folder, with a suffix
