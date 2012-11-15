@@ -13,19 +13,19 @@ geogdist = function(x1,y1,x2,y2) {
 #inputs
 taxon_name        <- "Saproscincus"
 base.dir = "C:/Users/u3579238/work/Phylofest/Models/skinks/"
-samples.filename = paste("species_models/clipped_grids/",taxon_name,"/sites_temp.csv",sep="")
-lat_column=1
-long_column=2
-
-env.filename      <- "species_models/clipped_grids/Saproscincus/bio1_msk.asc"
-
-#outputs
-output.filename   <- paste("species_models/bias_grids/",taxon_name,"/bias_grid_test.asc",sep="")
+samples.filename = paste("species_sites/",taxon_name,"_maxent.csv",sep="")
+lat_column=2
+long_column=3
 
 #settings
-background_samplecount <- 20
+background_samplecount <- 20000
 #s <- 100  # the standard deviation for the gaussian distance in kilometres
-s <- 3  # the standard deviation for the gaussian distance in degrees
+s <- 4  # the standard deviation for the gaussian distance in degrees
+
+env.filename      <- paste("species_models/clipped_grids/",taxon_name,"/bio01_msk.asc",sep="")
+#output.filename   <- paste("species_models/bias_grids/",taxon_name,"/bias_grid_test.asc",sep="")
+output.filename   <- paste("/",taxon_name,"_bias_grid_",s,"deg.asc",sep="")
+
 ################################
 
 work.dir       <- paste(base.dir,"species_models/bias_files",sep="")
@@ -55,19 +55,30 @@ system("rm envtemp.asc")
 #read in sample sites and make a raster
 samples.file <- paste(base.dir,samples.filename,sep="")
 sample_sites <- read.csv(samples.file)
-sample_sites <- sample_sites[c(long_column,lat_column)]
+#sample_sites <- sample_sites[sample_sites$Use == 1,]
+
+# get the grid attributes
+grid.env.att <- attributes(grid.env)
+env.cellsize <- grid.env.att$cellsize
+# note, these corner coordinates are for the centre of the corner cells, so 1/2 a cell in from the actual grid edges
+env.xll <- grid.env.att$xll  
+env.yll <- grid.env.att$yll
+env.xur <- env.xll + corner_ur[1] * env.cellsize
+env.yur <- env.yll + corner_ur[2] * env.cellsize
+
+#remove sample sites outside the boundaries of grid.env
+sample_sites <- sample_sites[sample_sites[long_column]>=(env.xll - (env.cellsize * 0.5)),]
+sample_sites <- sample_sites[sample_sites[long_column]<=(env.xur + (env.cellsize * 0.5)),]
+sample_sites <- sample_sites[sample_sites[lat_column]>=(env.yll - (env.cellsize * 0.5)),]
+sample_sites <- sample_sites[sample_sites[lat_column]<=(env.yur + (env.cellsize * 0.5)),]
+sample_sites <- sample_sites[,c(long_column,lat_column)]
 sample_sites[,3] <- 1
 
-grid.env.att <- attributes(grid.env)
-env.xll <- grid.env.att$xll
-env.yll <- grid.env.att$yll
-env.cellsize <- grid.env.att$cellsize
-
-mat <- matrix(NA,nrow=colcount.env,ncol=rowcount.env)  #strange.  I have reveresed rows and columns in the matrix to get the correct grid shape
+mat <- matrix(NA,nrow=colcount.env,ncol=rowcount.env)  #  strange.  I have reveresed rows and columns in the matrix to get the correct grid shape
 grid.sample <- as.asc(mat,xll=env.xll,yll=env.yll,cellsize=env.cellsize)
 grid.sample <- put.data(sample_sites,grid.sample)
 
-samplegrid.filename <- paste(base.dir,sub(".csv",".asc",samples.filename),sep="")
+samplegrid.filename <- paste(taxon_name,"_sites_grid_temp.asc",sep="")
 write.asc(grid.sample,samplegrid.filename)
 
 pixels.sample <- asc2dataframe(samplegrid.filename)
@@ -111,7 +122,7 @@ pixels.env <- merge(pixels.env,pixels.combined,all.x=TRUE)
 pixels.env <- pixels.env[c("y","x","gauss_dist")]
 
 cat("\nAbout to write grid to file\n")
-output.filename = paste(base.dir,output.filename,sep="")
+#output.filename = paste(base.dir,output.filename,sep="")
 dataframe2asc(pixels.env,output.filename)
 
 cat("\nFinished\n")
