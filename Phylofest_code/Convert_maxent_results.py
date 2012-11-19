@@ -7,8 +7,9 @@ arcpy.CheckOutExtension("Spatial")
 arcpy.env.overwriteOutput=True
 
 ### PARAMETERS ###
-genus = "Saproscincus"
-base_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\skinks\\"
+genus = "Hypsilurus"  # genus could refer to any group being handled as a set
+higher_taxon = "dragons"
+base_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\" + higher_taxon + "\\"
 maxent_model_base = base_dir + "species_models\\maxent\\" + genus + "\\"
 output_gdb_name = "maxent_models.gdb"
 sequence_site_filename = base_dir + "sequence_sites\\" + genus + "_lin_loc.csv"
@@ -53,9 +54,9 @@ with open(sequence_site_filename, 'rb') as csvfile:
                         GroupList.append(row[3])
                     rownum += 1
                 except:
-                    a=0 # just a do nothing line to keep the sytax working
+                    a=0 # just a do nothing line to keep the syntax working
             except:
-                a=0 # just a do nothing line to keep the sytax working
+                a=0 # just a do nothing line to keep the syntax working
                 
     # so now we have a list for each column, excluding rows with null coordinates
 del Lat

@@ -7,8 +7,9 @@ arcpy.env.overwriteOutput=True
 ### PARAMETERS ###
 os.linesep ="\n"
 
-genus = "Carlia"  # genus could refer to any group being handled as a set
-base_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\skinks\\"
+genus = "Saproscincus_South"  # genus could refer to any group being handled as a set
+higher_taxon = "skinks"
+base_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\" + higher_taxon + "\\"
 species_site_filename = "species_sites\\" + genus + "_ALA.csv"
 combined_sites_folder    = "species_sites\\"
 combined_sites_csv = genus + "_maxent.csv" #name of the new csv file of species,lat,long to be created
