@@ -12,8 +12,9 @@ geogdist = function(x1,y1,x2,y2) {
 
 ########## Parameters ##########
 #inputs
-taxon_name        <- "Saproscincus"
-base.dir = "C:/Users/u3579238/work/Phylofest/Models/skinks/"
+taxon_name        <- "Hypsilurus"
+higher_taxon = "dragons"
+base.dir = paste("C:/Users/u3579238/work/Phylofest/Models/",higher_taxon,"/",sep="")
 samples.filename = paste("species_sites/",taxon_name,"_maxent.csv",sep="")
 lat_column=2
 long_column=3
@@ -26,7 +27,7 @@ s <- 3  # the standard deviation for the gaussian distance in degrees
 env.filename      <- paste("species_models/clipped_grids/",taxon_name,"/bio01_msk.asc",sep="")
 #output.filename   <- paste("species_models/bias_grids/",taxon_name,"/bias_grid_test.asc",sep="")
 output.filename   <- paste("/",taxon_name,"_bias_grid_",s,"deg.asc",sep="")
-cores = 8
+cores = 2
 ################################
 
 work.dir       <- paste(base.dir,"species_models/bias_files",sep="")
@@ -135,4 +136,4 @@ cat("\nAbout to write grid to file\n")
 #output.filename = paste(base.dir,output.filename,sep="")
 dataframe2asc(pixels.env,output.filename)
 
-cat("\nFinished\n")
+cat("\nFinished.\n",date(),"\n")
