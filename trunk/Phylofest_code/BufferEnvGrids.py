@@ -7,7 +7,7 @@ arcpy.env.overwriteOutput=True
 ### PARAMETERS ###
 os.linesep ="\n"
 
-genus = "Saproscincus_South"  # genus could refer to any group being handled as a set
+genus = "Lampropholis"  # genus could refer to any group being handled as a set
 higher_taxon = "skinks"
 base_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\" + higher_taxon + "\\"
 species_site_filename = "species_sites\\" + genus + "_ALA.csv"
@@ -91,7 +91,7 @@ with open(sequence_site_filename, 'rb') as csvfile:
                     num = (float(row[6]))
                     row[5] = float(row[5])  #change x,y coords from text to number
                     row[6] = float(row[6])
-                    if (row[6] > ylim_min_points) and (row[5] > xlim_min_points): # add row if x and y are within defined limits
+                    if (row[5] > ylim_min_points) and (row[6] > xlim_min_points): # add row if x and y are within defined limits
                         sequence_sites.append([row[3],row[5],row[6]])
                     rownum += 1
                 except:

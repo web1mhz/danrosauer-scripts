@@ -36,7 +36,7 @@ sys.path.append("C:\\Users\\u3579238\Work\Phylofest\\")
 import LineageFunctions
 
 ### PARAMETERS ###
-genus = "Saproscincus"  # genus could refer to any group being handled as a set
+genus = "Saproscincus_North"  # genus could refer to any group being handled as a set
 higher_taxon = "skinks"
 base_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\" + higher_taxon + "\\"
 sequence_site_filename = base_dir + "sequence_sites\\" + genus + "_lin_loc.csv"
@@ -181,7 +181,7 @@ for group in GroupList:
         lineage_list=[]
         print "Lineages in " + group + ":"
         for row in GroupLineageList:
-            if row[2] == group:
+            if row[2] == group and "," not in row[3]:  # exclude lineage names with dodgy punctuation (fix in data later)
                 lineage_list.append(row[3])
                 print "   ", row[3]
                 
