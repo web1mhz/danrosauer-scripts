@@ -7,7 +7,7 @@ arcpy.CheckOutExtension("Spatial")
 arcpy.env.overwriteOutput=True
 
 ### PARAMETERS ###
-genus = "Saproscincus_North"  # genus could refer to any group being handled as a set
+genus = "Lampropholis"  # genus could refer to any group being handled as a set
 higher_taxon = "skinks"
 base_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\" + higher_taxon + "\\"
 maxent_model_base = base_dir + "species_models\\maxent\\" + genus + "\\"

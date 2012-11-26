@@ -12,22 +12,24 @@ geogdist = function(x1,y1,x2,y2) {
 
 ########## Parameters ##########
 #inputs
-taxon_name        <- "Hypsilurus"
-higher_taxon = "dragons"
+taxon_name        <- "Carlia"
+higher_taxon = "skinks"
 base.dir = paste("C:/Users/u3579238/work/Phylofest/Models/",higher_taxon,"/",sep="")
 samples.filename = paste("species_sites/",taxon_name,"_maxent.csv",sep="")
 lat_column=2
 long_column=3
 
 #settings
-background_samplecount <- 50000
+background_samplecount <- 20000
 #s <- 100  # the standard deviation for the gaussian distance in kilometres
 s <- 3  # the standard deviation for the gaussian distance in degrees
 
 env.filename      <- paste("species_models/clipped_grids/",taxon_name,"/bio01_msk.asc",sep="")
+#The preceeding line should be updated to work with a species name instead of a group name.
+
 #output.filename   <- paste("species_models/bias_grids/",taxon_name,"/bias_grid_test.asc",sep="")
 output.filename   <- paste("/",taxon_name,"_bias_grid_",s,"deg.asc",sep="")
-cores = 2
+cores = 6
 ################################
 
 work.dir       <- paste(base.dir,"species_models/bias_files",sep="")
