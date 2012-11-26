@@ -30,9 +30,15 @@ extra_layers = ["twi3se_01deg","clay30e_01deg","slope","geollmeanage"]
 output_gdb_name = "maxent_models.gdb"
 model_suffix = "_median"
 maxent_replicates = 25
-##################
-    
 
+# a changeable list to allow for species in the dataset to be skipped
+named_species   = ["Lampropholis_adonis"]
+use_list        = "do"  #specify whether to:
+                            #do all the species in the data and ignore the list (use_list="");
+                            #do the named species (use_list="do") or;
+                            #skip the named species (use_list="skip")
+
+##################
 
 print "Starting to create clipped enviornment grids with a " + str(buffer_dist) + " buffer."
 print "Target: " + target_location
@@ -134,17 +140,26 @@ with open(combined_sites_csv,"w") as f:
     
 del species_sites, sequence_sites, f
 
+# adjust the model_groups to select particular species based on the names_species parameter
+if use_list == "do":
+    for model_group in model_groups:
+        if model_group not in named_species:
+            model_groups.remove(model_group)
+elif use_list == "skip":
+    for model_group in model_groups:
+        if model_group in named_species:
+            model_groups.remove(model_group)
+
 # loop through the model_groups
 for model_group in model_groups:
     if model_group.find("_") >= 0:   # only model where the taxon name is binomial
-    
         group_sites=[]
         for row in sites:
             if row[0] == model_group:
                 group_sites.append(row)
                 
         # write the model_group location record list to file
-        model_group_sites_csv = base_dir + combined_sites_folder + model_group + ".csv"
+        model_group_sites_csv = base_dir + combined_sites_folder + genus + "\\" + model_group + ".csv"
         with open(model_group_sites_csv,"w") as f:
             new_csv = csv.writer(f, delimiter=',',dialect="myDialect")
             myheader = ("model_group","lat","long")
@@ -160,13 +175,6 @@ for model_group in model_groups:
         except:
            # If an error occurred print the message to the screen
             print arcpy.GetMessages() 
-    
-        ###############  HERE NEED TO LOOP THROUGH 'MODEL GROUPS'
-        ###############  FOR EACH
-        ###############  DO THE STEPS TO CREATE BUFFERED GRIDS
-        ###############  CALL MAXENT (WAIT FOR COMPLETION)
-        ###############  COPY THE COMBINED RESULT TO THE GDB
-        ###############  DELETE THE GRIDS
     
         #get the points layer extent, and calculate the buffer extent
         points_properties = arcpy.Describe(points_layer)
@@ -205,7 +213,7 @@ for model_group in model_groups:
             os.makedirs(maxent_model_base)
         maxent_call = "java -mx1024m -cp " + maxent_loc + " density.MaxEnt nowarnings noprefixes novisible jackknife outputdirectory=" + maxent_model_base +  " samplesfile=" + model_group_sites_csv + " environmentallayers=" + target_location + " replicates=" + str(maxent_replicates) + " autorun randomseed"
         
-        print "About to start maxent model for: " + model_group + "  replicates:" + str(maxent_replicates)
+        print "\nAbout to start maxent model for: " + model_group + "  replicates: " + str(maxent_replicates) + "\n"
         subprocess.call(maxent_call)
           
         #COPY THE RESULT TO GDB
@@ -214,12 +222,14 @@ for model_group in model_groups:
         # create the output geodatabase if needed
         if not os.path.exists(maxent_model_base):
             os.makedirs(maxent_model_base)
-        try:
-            maxent_model_base_ESRI = string.replace(maxent_model_base,"\\","/")
-            arcpy.CreateFileGDB_management(maxent_model_base_ESRI, output_gdb_name)
-        except:
-            print "File geodatabase "+maxent_model_base_ESRI+ " " + output_gdb_name + " already exists or creation failed"
-    
+        
+        if not output_gdb_name in arcpy.ListWorkspaces("*","FileGDB"):
+            try:
+                maxent_model_base_ESRI = string.replace(maxent_model_base,"\\","/")
+                arcpy.CreateFileGDB_management(maxent_model_base_ESRI, output_gdb_name)
+            except:
+                print "\nCould not create file geodatabase "+maxent_model_base_ESRI+ " " + output_gdb_name + " \n"
+        
         # set the geoprocessing environment
         model_gdb = maxent_model_base_ESRI + output_gdb_name
         env.workspace  = model_gdb
@@ -235,11 +245,17 @@ for model_group in model_groups:
         
         # delete temporary files
         env.workspace = target_location
-        datasets = arcpy.ListRasters("*")
-        for dataset in datasets:
-            arcpy.Delete_management(dataset)
+        wildcard = genus + "*"
+        keep_datasets = arcpy.ListRasters(wildcard)
+        all_datasets =  arcpy.ListRasters("*")
+        for dataset in all_datasets:
+            if dataset not in keep_datasets:
+                arcpy.Delete_management(dataset)
         
         print "\n****************************\nFinished models for " + model_group + "\n****************************\n"
         
-print "\n****************************\nFinished all models for " + higher_taxon + "\n****************************\n"
+    else:
+        print "\n****************************\nSkipping " + model_group + "\n****************************\n"
+        
+print "\n****************************\nFinished all models for " + genus + "\n****************************\n"
 

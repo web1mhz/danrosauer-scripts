@@ -36,7 +36,7 @@ sys.path.append("C:\\Users\\u3579238\Work\Phylofest\\")
 import LineageFunctions
 
 ### PARAMETERS ###
-genus = "Saproscincus_North"  # genus could refer to any group being handled as a set
+genus = "Carlia"  # genus could refer to any group being handled as a set
 higher_taxon = "skinks"
 base_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\" + higher_taxon + "\\"
 sequence_site_filename = base_dir + "sequence_sites\\" + genus + "_lin_loc.csv"
@@ -46,7 +46,7 @@ output_gdb_name = "results.gdb"
 scratch_workspace = "C:\\Users\\u3579238\\Work\\Phylofest\\Models\\"  #scratch workspace is used by ArcGIS for temporary files during analysis
 scratch_gdb = "ESRI_scratch.gdb"
 maxent_model_base = base_dir + "species_models\\maxent\\" + genus + "\\maxent_models.gdb"
-buffer_dist = 4                                                               # the buffer distance in degrees
+buffer_dist = 2.5                                                               # the buffer distance in degrees
 additional_buffer = 0  ## how much (as a proportion) the output grids should extend beyond the buffered points
 grid_resolution = 0.01
 Australia_extent = arcpy.Extent(112.9,-43.75,153.64,-9)
@@ -58,6 +58,7 @@ Weight_function = "inverse_square"  ## determines whether lineage weight is calc
 Min_weight_threshold = 0.02         ## weights below this for any layer are set to 0.  If the value here is 0, then no threshold is applied
 Scale_to = "model"                  ## determines whether lineage weights sum to the model suitability or to 1
                                     ## can be "model" or "one"
+Lin_exclude_list = ["_","lin_","CZ","lin_CZ","0","lin_0"]
  
 # create the scratch geodatabase if needed (to store temporary layers during analysis)
 try:
@@ -73,7 +74,7 @@ try:
     target_location_ESRI = string.replace(target_location,"\\","/")
     arcpy.CreateFileGDB_management(target_location_ESRI, "results.gdb")
 except:
-    print "File geodatabase "+target_location+ " " + output_gdb_name + " already exists\nor creation failed"
+    print "File geodatabase "+target_location + output_gdb_name + " already exists or creation failed"
 
 # Load the sequence site data
 print "\nLoading the sequenced sites\n"
@@ -81,9 +82,9 @@ print "\nLoading the sequenced sites\n"
 # make each column being used, into a list
 # and also create lists of unique AnalysisGroups and Lineages
 with open(sequence_site_filename, 'rb') as csvfile:
-    sequence_csv = csv.reader(csvfile, delimiter=',')
+    sequence_csv = csv.reader(csvfile, delimiter=',',quoting=csv.QUOTE_MINIMAL)
     rownum = 0
-    rowdata = []
+    #rowdata = []
     Species = []
     ModelGroup=[]
     Lineage = []
@@ -98,13 +99,12 @@ with open(sequence_site_filename, 'rb') as csvfile:
             header = row
             rownum += 1
         else:
-
-            try:        # if the lat or long can't be converted to a number, then skip that row, by not incremeting rownum
+            try:        # if the lat or long can't be converted to a number, then skip that row
                 Lat.append(float(row[5]))
                 try:
-                    # code gets to here for valid lat and long, so other steps can go here too
                     Long.append(float(row[6]))
-                    rowdata.append(row)
+                    # code gets to here for valid lat and long, so other steps can go here too
+                    #rowdata.append(row)
                     Species.append(row[2])
                     ModelGroup.append(row[3])
                     Lineage.append(row[4])                    
@@ -140,13 +140,8 @@ except:
 outLocation = env.workspace
 outFeatureClass = genus + "_lin_points"
 
-#mxd_path = "C:\Users\u3579238\Desktop\temp.mxd"
-#mxd = arcpy.mapping.MapDocument(r"C:\Users\u3579238\Desktop\temp.mxd")
-#df = arcpy.mapping.ListDataFrames(mxd, "Layers")[0]
-#addLayer = arcpy.mapping.Layer(outLocation + outFeatureClass)
-#arcpy.mapping.AddLayer(df, addLayer, "BOTTOM")
-#mxd.saveACopy(r"C:\temp\Untitled1.mxd")
 try:
+    arcpy.env.overwriteOutput=True
     arcpy.CopyFeatures_management(points_layer, outFeatureClass, "", "0", "0", "0")
 except:
     print "\n" + outFeatureClass + " could not be created, or already exists."
@@ -155,6 +150,7 @@ points_fc = outLocation + "/" + outFeatureClass
 # Loop through the list of Model Groups
 for group in GroupList:
     if group != 0 and group != "":
+    #if group == "Saproscincus challengeri":   # this is a temp line to model just one group!!
     
         print "\nStarting group " + group + "\n"
     
@@ -181,9 +177,10 @@ for group in GroupList:
         lineage_list=[]
         print "Lineages in " + group + ":"
         for row in GroupLineageList:
-            if row[2] == group and "," not in row[3]:  # exclude lineage names with dodgy punctuation (fix in data later)
-                lineage_list.append(row[3])
-                print "   ", row[3]
+            if row[3] not in lineage_list:
+                if row[2] == group and "," not in row[3] and row[3] not in Lin_exclude_list:  # exclude particular lineage names and those with dodgy punctuation (fix in data later)
+                    lineage_list.append(row[3])
+                    print "   ", row[3]
                 
         
         maxent_extent = maxent_raster.extent
@@ -207,12 +204,11 @@ for group in GroupList:
         env.extent = arcpy.Extent(xmin,ymin,xmax,ymax)
     
         ### generate a weight grid for each lineage  START OF STEP 4
-        #arcpy.env.mask = maxent_model
         
         ## get a selectable layer for the sequenced sites
         lin_lyr = arcpy.MakeFeatureLayer_management(points_fc,"lineage_layer")[0]
     
-        print "Looping through the lineages in " + group + " to generate weight grids\n"
+        print "\nLooping through the lineages in " + group + " to generate weight grids\n"
         count = 0
         
         for lineage in lineage_list:
