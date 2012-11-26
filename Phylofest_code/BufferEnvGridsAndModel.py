@@ -32,21 +32,32 @@ model_suffix = "_median"
 maxent_replicates = 25
 
 # a changeable list to allow for species in the dataset to be skipped
-named_species   = ["Lampropholis_adonis"]
+named_species   = ["Lampropholis_amicula", "Lampropholis_robertsi", "Lampropholis_guichenoti"]
 use_list        = "do"  #specify whether to:
-                            #do all the species in the data and ignore the list (use_list="");
-                            #do the named species (use_list="do") or;
+                            #do the named species (use_list="do")
                             #skip the named species (use_list="skip")
+                            #do all the species in the data and ignore the list (use_list="" or anything else);
 
 ##################
 
 print "Starting to create clipped enviornment grids with a " + str(buffer_dist) + " buffer."
 print "Target: " + target_location
 
-# create the output folder
+# create the output folder for clipped grids
 target_location = base_dir + target_location
 if not os.path.exists(target_location):
     os.makedirs(target_location)
+    
+# create the output geodatabase for species models, if needed
+if not os.path.exists(maxent_model_base):
+    os.makedirs(maxent_model_base)
+arcpy.env.overwriteOutput=False
+try:
+    maxent_model_base_ESRI = string.replace(maxent_model_base,"\\","/")
+    arcpy.CreateFileGDB_management(maxent_model_base_ESRI, output_gdb_name)
+except:
+    print "\nFile geodatabase "+maxent_model_base_ESRI+ " " + output_gdb_name + " exists, or could not be created.\n"
+arcpy.env.overwriteOutput=True    
 
 env.workspace = target_location
 env.snapRaster= source_location + "bio01"
@@ -140,15 +151,11 @@ with open(combined_sites_csv,"w") as f:
     
 del species_sites, sequence_sites, f
 
-# adjust the model_groups to select particular species based on the names_species parameter
+# restrict the model_groups to particular species based on the names_species parameter
 if use_list == "do":
-    for model_group in model_groups:
-        if model_group not in named_species:
-            model_groups.remove(model_group)
+    model_groups = list(set(named_species).intersection(set(model_groups)))
 elif use_list == "skip":
-    for model_group in model_groups:
-        if model_group in named_species:
-            model_groups.remove(model_group)
+    model_groups = list(set(model_groups).difference(set(named_species)))
 
 # loop through the model_groups
 for model_group in model_groups:
@@ -217,19 +224,6 @@ for model_group in model_groups:
         subprocess.call(maxent_call)
           
         #COPY THE RESULT TO GDB
-    
-        ##################
-        # create the output geodatabase if needed
-        if not os.path.exists(maxent_model_base):
-            os.makedirs(maxent_model_base)
-        
-        if not output_gdb_name in arcpy.ListWorkspaces("*","FileGDB"):
-            try:
-                maxent_model_base_ESRI = string.replace(maxent_model_base,"\\","/")
-                arcpy.CreateFileGDB_management(maxent_model_base_ESRI, output_gdb_name)
-            except:
-                print "\nCould not create file geodatabase "+maxent_model_base_ESRI+ " " + output_gdb_name + " \n"
-        
         # set the geoprocessing environment
         model_gdb = maxent_model_base_ESRI + output_gdb_name
         env.workspace  = model_gdb
