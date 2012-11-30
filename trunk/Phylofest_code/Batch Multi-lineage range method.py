@@ -36,8 +36,8 @@ sys.path.append("C:\\Users\\u3579238\Work\Phylofest\\")
 import LineageFunctions
 
 ### PARAMETERS ###
-genus = "Carlia"  # genus could refer to any group being handled as a set
-higher_taxon = "skinks"
+genus = "Saltuarius"  # genus could refer to any group being handled as a set
+higher_taxon = "geckoes"
 base_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\" + higher_taxon + "\\"
 sequence_site_filename = base_dir + "sequence_sites\\" + genus + "_lin_loc.csv"
 target_location = base_dir + "lineage_models\\" + genus + "\\"  # where the lineage model grids and working data
