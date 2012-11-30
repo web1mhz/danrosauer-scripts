@@ -12,7 +12,7 @@ sys.path.append("C:\\Users\\u3579238\Work\Phylofest\\")
 import LineageFunctions
 
 ### PARAMETERS ###
-genus = "Gnypetoscincus"  # genus could refer to any group being handled as a set
+genus = "Eulamprus"  # genus could refer to any group being handled as a set
 higher_taxon = "skinks"
 base_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\" + higher_taxon + "\\"
 sequence_site_filename = base_dir + "sequence_sites\\" + genus + "_lin_loc.csv"

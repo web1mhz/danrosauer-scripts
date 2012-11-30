@@ -7,8 +7,8 @@ arcpy.env.overwriteOutput=True
 ### PARAMETERS ###
 os.linesep ="\n"
 
-genus = "Lampropholis"  # genus could refer to any group being handled as a set
-higher_taxon = "skinks"
+genus = "Saltuarius"  # genus could refer to any group being handled as a set
+higher_taxon = "geckoes"
 base_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\" + higher_taxon + "\\"
 species_site_filename = "species_sites\\" + genus + "_ALA.csv"
 combined_sites_folder    = "species_sites\\"
@@ -32,8 +32,8 @@ model_suffix = "_median"
 maxent_replicates = 25
 
 # a changeable list to allow for species in the dataset to be skipped
-named_species   = ["Lampropholis_amicula", "Lampropholis_robertsi", "Lampropholis_guichenoti"]
-use_list        = "do"  #specify whether to:
+named_species   = [""]
+use_list        = ""  #specify whether to:
                             #do the named species (use_list="do")
                             #skip the named species (use_list="skip")
                             #do all the species in the data and ignore the list (use_list="" or anything else);
