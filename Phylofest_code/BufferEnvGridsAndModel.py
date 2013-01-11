@@ -7,7 +7,7 @@ arcpy.env.overwriteOutput=True
 ### PARAMETERS ###
 os.linesep ="\n"
 
-genus = "Saltuarius"  # genus could refer to any group being handled as a set
+genus = "Phyllurus"  # genus could refer to any group being handled as a set
 higher_taxon = "geckoes"
 base_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\" + higher_taxon + "\\"
 species_site_filename = "species_sites\\" + genus + "_ALA.csv"
@@ -27,15 +27,19 @@ target_location = "species_models\\clipped_grids\\" + genus + "\\" # where the c
 # bioclim layers 1 to 19 are matched automatically.  Any other layers to use are listed here.
 extra_layers = ["twi3se_01deg","clay30e_01deg","slope","geollmeanage"]
 
+use_bias_grid  = False
+bias_grid_name = "sample_density_1.asc"
+
 output_gdb_name = "maxent_models.gdb"
 model_suffix = "_median"
 maxent_replicates = 25
+threads = 5  # this sets how many processors maxent can use, and is an experimental Maxent feature. Watch carefully
 
 # a changeable list to allow for species in the dataset to be skipped
-named_species   = [""]
-use_list        = ""  #specify whether to:
-                            #do the named species (use_list="do")
-                            #skip the named species (use_list="skip")
+named_species   = ["Phyllurus_gulbaru"]
+use_list        = "skip"  #specify whether to:
+                            #do - the named species (use_list="do")
+                            #skip - the named species (use_list="skip")
                             #do all the species in the data and ignore the list (use_list="" or anything else);
 
 ##################
@@ -73,14 +77,23 @@ with open(species_site_filename, 'rb') as csvfile:
     rownum = 0
     species_sites = []
     num=0
+    usecol = -1
 
     for row in sequence_csv:
         # Save header row.
         if rownum == 0:
             header = row
             rownum += 1
+            
+            # find the column called 'use'
+            columns = range(len(header))
+            for k in columns:
+                if str.lower(header[k]) == "use":
+                    usecol = k
+                    break
         else:
-            if (row[4] == '1'): # only proceed where 'use' = 1 and x and y are within defined limits
+            rownum += 1
+            if (row[usecol] == '1'): # only proceed where 'use' = 1 and x and y are within defined limits
                 try:        # if the lat or long can't be converted to a number, then skip that row, by not incremeting rownum
                     num = (float(row[1]))
                     try:
@@ -108,21 +121,29 @@ with open(sequence_site_filename, 'rb') as csvfile:
         if rownum == 0:
             header = row
             rownum += 1
+            
+            # find the row called 'use'
+            columns = range(len(header))
+            for k in columns:
+                if str.lower(header[k]) == "use":
+                    usecol = k
+                    break
         else:
-            try:        # if the lat or long can't be converted to a number, then skip that row, by not incremeting rownum
-                num = (float(row[5]))
-                try:
-                    # code gets to here for valid lat and long, so other steps can go here too
-                    num = (float(row[6]))
-                    row[5] = float(row[5])  #change x,y coords from text to number
-                    row[6] = float(row[6])
-                    if (row[5] > ylim_min_points) and (row[6] > xlim_min_points): # add row if x and y are within defined limits
-                        sequence_sites.append([row[3],row[5],row[6]])
-                    rownum += 1
+            if (row[usecol] == '1'): # only proceed where 'use' = 1 and x and y are within defined limits
+                try:        # if the lat or long can't be converted to a number, then skip that row, by not incremeting rownum
+                    num = (float(row[5]))
+                    try:
+                        # code gets to here for valid lat and long, so other steps can go here too
+                        num = (float(row[6]))
+                        row[5] = float(row[5])  #change x,y coords from text to number
+                        row[6] = float(row[6])
+                        if (row[5] > ylim_min_points) and (row[6] > xlim_min_points): # add row if x and y are within defined limits
+                            sequence_sites.append([row[3],row[5],row[6]])
+                        rownum += 1
+                    except:
+                        1==1
                 except:
                     1==1
-            except:
-                1==1
 
 #and combine them
 sites = species_sites + sequence_sites
@@ -201,7 +222,7 @@ for model_group in model_groups:
     
         env.workspace = source_location
         datasets = arcpy.ListRasters("*","GRID")
-    
+        
         for dataset in datasets:
         
             #check if the name is a layer to use - in this case bio01 - bio19
@@ -213,28 +234,41 @@ for model_group in model_groups:
                 new_grid_name = dataset + "_" + model_group_sp + "_msk.asc"
                 print model_group, dataset, new_grid_name
                 arcpy.RasterToASCII_conversion(maskedgrid, target_location + new_grid_name)
+
+        # add code here to include the bias grid in rasters to be clipped, copied
+        if use_bias_grid:
+            env.workspace = base_dir + "species_models\\bias_files\\"
+            #extract the required part of the grid, and write it to specified folder, with a suffix
+            maskedgrid = arcpy.sa.ExtractByMask(bias_grid_name,pointbuffer)
+            new_grid_name = model_group_sp + "_" + bias_grid_name
+            print model_group, new_grid_name
+            arcpy.RasterToASCII_conversion(maskedgrid, target_location + new_grid_name)
                 
         #RUN THE MAXENT MODEL HERE
         # create the output folder
         if not os.path.exists(maxent_model_base):
             os.makedirs(maxent_model_base)
-        maxent_call = "java -mx1024m -cp " + maxent_loc + " density.MaxEnt nowarnings noprefixes novisible jackknife outputdirectory=" + maxent_model_base +  " samplesfile=" + model_group_sites_csv + " environmentallayers=" + target_location + " replicates=" + str(maxent_replicates) + " autorun randomseed"
+        maxent_call = "java -mx1024m -cp " + maxent_loc + " density.MaxEnt nowarnings noprefixes novisible jackknife outputdirectory=" + maxent_model_base +  " samplesfile=" + model_group_sites_csv + " environmentallayers=" + target_location + " replicates=" + str(maxent_replicates) + " autorun randomseed threads=4"
         
         print "\nAbout to start maxent model for: " + model_group + "  replicates: " + str(maxent_replicates) + "\n"
-        subprocess.call(maxent_call)
-          
-        #COPY THE RESULT TO GDB
-        # set the geoprocessing environment
-        model_gdb = maxent_model_base_ESRI + output_gdb_name
-        env.workspace  = model_gdb
-    
-        # import the maxent model result from ascii to ESRI gdb
-        maxent_model = maxent_model_base + "\\" + string.replace(model_group," ","_") + model_suffix + ".asc"
-        out_raster = model_gdb+"/" + string.replace(model_group," ","_")
-        arcpy.ASCIIToRaster_conversion(maxent_model, out_raster, "FLOAT")
-        print "\nImported " + string.replace(model_group," ","_") + ".asc" + " to " + out_raster
-    
-        print "\nFinished model import to GDB for: " + model_group + "\n"
+        try:
+            subprocess.call(maxent_call)
+         
+            #COPY THE RESULT TO GDB
+            # set the geoprocessing environment
+            model_gdb = maxent_model_base_ESRI + output_gdb_name
+            env.workspace  = model_gdb
+        
+            # import the maxent model result from ascii to ESRI gdb
+            maxent_model = maxent_model_base + "\\" + string.replace(model_group," ","_") + model_suffix + ".asc"
+            out_raster = model_gdb+"/" + string.replace(model_group," ","_")
+            arcpy.ASCIIToRaster_conversion(maxent_model, out_raster, "FLOAT")
+            print "\nImported " + string.replace(model_group," ","_") + ".asc" + " to " + out_raster
+        
+            print "\nFinished model import to GDB for: " + model_group + "\n"
+        except:
+            print "\n*******************\nModel failed for ", model_group, "\n\n"
+            
         print "Now deleting buffered grids for: " + model_group
         
         # delete temporary files
