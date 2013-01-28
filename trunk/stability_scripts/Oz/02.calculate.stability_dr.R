@@ -6,8 +6,8 @@ library(SDMTools); library(maptools)
 
 ################################################################################
 #Define some directories
-work.dir = 'C:/Users/u3579238/Work/Refugia/Stability/CQ_RF_east/'; setwd(work.dir)
-out.dir = 'C:/Users/u3579238/Work/Refugia/Stability/CQ_RF_east/stability/'; dir.create(out.dir)
+work.dir = 'C:/Users/u3579238/Work/Refugia/Stability/AWT_RF/'; setwd(work.dir)
+out.dir = 'C:/Users/u3579238/Work/Refugia/Stability/AWT_RF/stability/'; dir.create(out.dir)
 Oz.shape_path = 'C:/Users/u3579238/GISData/aus5m_coast.shp'
 
 #list the projections
