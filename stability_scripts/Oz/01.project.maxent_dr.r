@@ -3,7 +3,7 @@
 
 ################################################################################
 #define directories
-work.dir = 'C:/Users/u3579238/Work/Refugia/Stability/NE_NSW_RF/'; setwd(work.dir)
+work.dir = 'C:/Users/u3579238/Work/Refugia/Stability/SEA_RF/maxent.output/'; setwd(work.dir)
 mxe.dir = 'C:/Users/u3579238/Work/Refugia/Stability/OZ.climates/mxe/'
 maxent.jar = 'C:/Users/u3579238/Work/Refugia/Stability/maxent.jar'
 
@@ -44,10 +44,10 @@ for (tproj in proj.list) {
     cat("\nAbout to project model for year", tproj,"\n")
     
     #Original model projection
-    #maxent_call = paste('java -mx1024m -cp ',maxent.jar,' density.Project ',work.dir,'maxent.output/rf.lambdas ',mxe.dir,tproj,' ',work.dir,tproj,'.asc fadebyclamping nowriteclampgrid',sep="")
+    maxent_call = paste('java -mx1024m -cp ',maxent.jar,' density.Project ',work.dir,'rf.lambdas ',mxe.dir,tproj,' ',work.dir,tproj,'.asc fadebyclamping nowriteclampgrid',sep="")
     
     #Modified model projection to test a model fitted with a restricted set of predictors
-    maxent_call = paste('java -mx1024m -cp ',maxent.jar,' density.Project ',work.dir,'maxent.output1/rf.lambdas ',mxe.dir,tproj,' ',work.dir,"/maxent.output1/",tproj,'.asc fadebyclamping nowriteclampgrid',sep="")
+    #maxent_call = paste('java -mx1024m -cp ',maxent.jar,' density.Project ',work.dir,'maxent.output1/rf.lambdas ',mxe.dir,tproj,' ',work.dir,"/maxent.output1/",tproj,'.asc fadebyclamping nowriteclampgrid',sep="")
     
     cat(maxent_call,"\n")
     

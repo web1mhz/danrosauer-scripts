@@ -8,15 +8,14 @@ library(SDMTools)
 ################################################################################
 
 #define directories
-work.dir = 'C:/Users/u3579238/Work/Refugia/Stability/NE_NSW_RF/'; setwd(work.dir)
+work.dir = 'C:/Users/u3579238/Work/Refugia/Stability/SEA_RF/'; setwd(work.dir)
 current.bioclim = 'C:/Users/u3579238/Work/Refugia/Stability/OZ.climates/bioclim/000'
 maxent.jar = 'C:/Users/u3579238/Work/Refugia/Stability/maxent.jar'
 #veg_grid = 'C:/Users/u3579238/Work/Refugia/Stability/Oz/pre1750_mvg.asc.gz'
-#veg_grid = 'C:/Users/u3579238/Work/Refugia/Stability/NVIS/nvis4_1_mvs_pre_geo_4km_trop_rf_only.asc'
-veg_grid = 'C:/Users/u3579238/Work/Refugia/Stability/NVIS/ne_nsw_rainforest.asc'
+veg_grid = 'C:/Users/u3579238/Work/Refugia/Stability/NVIS/SEA_all_rainforest.asc'
 
-output_folder_name = 'maxent.output1'
-mask_layer_name='new_mask'
+output_folder_name = 'maxent.output'
+#mask_layer_name='new_mask'
 
 #define some basic data
 mvg.asc = read.asc(veg_grid)                 # read in the vegetation grid
@@ -39,7 +38,9 @@ for (tfile in list.files(current.bioclim,pattern='\\.asc.gz',full.name=TRUE)) {
 pos.subset = na.omit(pos.subset) #ensure there is no missing data
 
 #now remove the mask column (if any)
-pos.subset[mask_layer_name] <- NULL
+if (exists("mask_layer_name")) {
+  pos.subset[mask_layer_name] <- NULL
+}
 
 #define the occurrences & background ... then write out the data
 occur = data.frame(species='rf',pos.subset[which(pos.subset$mvg==1),]); occur$mvg = NULL #define the occurrences
