@@ -7,21 +7,23 @@ arcpy.env.overwriteOutput=True
 ### PARAMETERS ###
 os.linesep ="\n"
 
-genus = "Carlia_Lygisaurus"  # genus could refer to any group being handled as a set
-higher_taxon = "skinks"
-base_dir = "C:\\Users\\u3579238\\work\\Fieldwork\\SpeciesModels\\" + higher_taxon + "\\"
-species_site_filename = "sites\\" + genus + "_ALA.csv"
-species_site_namefield = "MatchedScientificName"
-species_site_latfield  = "Latitude_processed"
-species_site_longfield = "Longitude_processed"
+genus = "Wyulda"  # genus could refer to any group being handled as a set
+higher_taxon = "brushtails"
+base_dir = "C:\\Users\\u3579238\\GISData\\Helping\\Sally\\" + higher_taxon + "\\"
+#species_site_filename = "sites\\" + genus + "_ALA.csv"
+species_site_filename = "sites\\Wyulda_NatureMap_LatLong.csv"
+species_site_namefield = "ScientificName"
+species_site_latfield  = "Latitude"
+species_site_longfield = "Longitude"
 
 combined_sites_folder    = "sites\\"
 combined_sites_csv = genus + "_maxent.csv" #name of the new csv file of species,lat,long to be created
 
+use_tissue_sites = False
 tissue_site_filename = "sites\\" + genus + "_tissues.csv"
-tissue_site_namefield = "NewName"
-tissue_site_latfield =  "ValidLat"
-tissue_site_longfield = "ValidLon"
+tissue_site_namefield = "ScientificName"
+tissue_site_latfield =  "Latitude"
+tissue_site_longfield = "Longitude"
 
 maxent_loc = "C:\\Users\\u3579238\\Work\\Phylofest\Models\\maxent.jar"
 maxent_model_base = base_dir + "maxent\\" + genus + "\\"
@@ -35,20 +37,20 @@ target_location = "clipped_grids\\" + genus + "\\" # where the clipped grids go
 
 # bioclim layers 1 to 19 are matched automatically.  Any other layers to use are listed here.
 #extra_layers = ["twi3se_01deg","clay30e_01deg","slope","geollmeanage"]
-extra_layers = ["twi3se_01deg","slope","geollmeanage"]
+extra_layers = ["twi3se_01deg","slope","geollmeanage","mean_00_12_max_res_01"]
 
-use_bias_grid  = True
-bias_grid_name = "skink_logsamplecount" # this must be an .asc file, but omit the .asc here 
+use_bias_grid  = False
+bias_grid_name = "" # this must be an .asc file, but omit the .asc here 
 maxent_replicates = 25
-jackknife = False
-processor_threads = 9  # this sets how many processors MaxEnt can use.
+jackknife = True
+processor_threads = 10  # this sets how many processors MaxEnt can use.
 
 output_gdb_name = "maxent_models.gdb" 
 model_suffix = "_median"
 
 # a changeable list to allow for species in the dataset to be skipped
-named_species   = ["Carlia","Carlia_amax","Carlia_bicarinata","Carlia_jarnoldae","Carlia_johnstonei","Carlia_longipes", "Carlia_sp"]
-use_list        = "skip"  #specify whether to:
+named_species   = []
+use_list        = ""  #specify whether to:
                             #do - the named species (use_list="do")
                             #skip - the named species (use_list="skip")
                             #do all the species in the data and ignore the list (use_list="" or anything else);
@@ -131,49 +133,52 @@ with open(species_site_filename, 'rb') as csvfile:
                     1==1
     
 #load the tissue site coordinates
-tissue_site_filename = base_dir + tissue_site_filename
-with open(tissue_site_filename, 'rb') as csvfile:
-    tissue_csv = csv.reader(csvfile, delimiter=',')
-    rownum = 0
-    tissue_sites = []
-
-    for row in tissue_csv:
-        # Save header row.
-        if rownum == 0:
-            header = row
-            rownum += 1
-            
-            # find the columns for 'use', lat and long
-            columns = range(len(header))
-            for k in columns:
-                if str.lower(header[k]) == "use":
-                    usecol = k
-                elif header[k] == tissue_site_namefield:
-                    namecol = k                    
-                elif header[k] == tissue_site_latfield:
-                    latcol = k
-                elif header[k] == tissue_site_longfield:
-                    longcol = k                
-        else:
-            if (row[usecol] == '1'): # only proceed where 'use' = 1 and x and y are within defined limits
-                try:        
-                    row[latcol] = (float(row[latcol])) #change y coord from text to number AND fail for non-numbers to skip them
-                    try:
-                        # code gets to here for valid lat, so other steps can go here too
-                        row[longcol] = (float(row[longcol])) #change x coord from text to number AND fail for non-numbers to skip them
-                        row[namecol] = string.replace(row[namecol]," ","_")  #replace spaces in taxon name with _
-                        if (row[latcol] > ylim_min_points) and (row[longcol] > xlim_min_points) and (row[namecol] <> ""):  # add row if x and y are within defined limits and there is a taxon name
-                            newrow = [row[namecol]]
-                            newrow.append(row[latcol])
-                            newrow.append(row[longcol])
-                            tissue_sites.append(newrow)
+if (use_tissue_sites):
+    tissue_site_filename = base_dir + tissue_site_filename
+    with open(tissue_site_filename, 'rb') as csvfile:
+        tissue_csv = csv.reader(csvfile, delimiter=',')
+        rownum = 0
+        tissue_sites = []
+    
+        for row in tissue_csv:
+            # Save header row.
+            if rownum == 0:
+                header = row
+                rownum += 1
+                
+                # find the columns for 'use', lat and long
+                columns = range(len(header))
+                for k in columns:
+                    if str.lower(header[k]) == "use":
+                        usecol = k
+                    elif header[k] == tissue_site_namefield:
+                        namecol = k                    
+                    elif header[k] == tissue_site_latfield:
+                        latcol = k
+                    elif header[k] == tissue_site_longfield:
+                        longcol = k                
+            else:
+                if (row[usecol] == '1'): # only proceed where 'use' = 1 and x and y are within defined limits
+                    try:        
+                        row[latcol] = (float(row[latcol])) #change y coord from text to number AND fail for non-numbers to skip them
+                        try:
+                            # code gets to here for valid lat, so other steps can go here too
+                            row[longcol] = (float(row[longcol])) #change x coord from text to number AND fail for non-numbers to skip them
+                            row[namecol] = string.replace(row[namecol]," ","_")  #replace spaces in taxon name with _
+                            if (row[latcol] > ylim_min_points) and (row[longcol] > xlim_min_points) and (row[namecol] <> ""):  # add row if x and y are within defined limits and there is a taxon name
+                                newrow = [row[namecol]]
+                                newrow.append(row[latcol])
+                                newrow.append(row[longcol])
+                                tissue_sites.append(newrow)
+                        except:
+                            1==1
                     except:
                         1==1
-                except:
-                    1==1
-                    
-#and combine them
-sites = species_sites + tissue_sites
+                        
+    #and combine them
+    sites = species_sites + tissue_sites
+else:
+    sites = species_sites
 
 #list the model_groups and remove spaces from taxon names
 model_groups = []
@@ -197,7 +202,9 @@ with open(combined_sites_csv,"w") as f:
     new_csv.writerow(myheader)
     new_csv.writerows(sites)
     
-del species_sites, tissue_sites, f
+del species_sites, f
+if (use_tissue_sites):
+    del tissues_sites
 
 # restrict the model_groups to particular species based on the names_species parameter
 if use_list == "do":
@@ -240,7 +247,7 @@ for model_group in model_groups:
         points_properties = arcpy.Describe(points_layer)
         points_extent = points_properties.extent
         extent_buffer = buffer_dist * 1.25
-        new_extent = [points_extent.xmin - extent_buffer, points_extent.ymin - extent_buffer, points_extent.xmax + extent_buffer, points_extent.ymax + extent_buffer]
+        new_extent = [points_extent.XMin - extent_buffer, points_extent.YMin - extent_buffer, points_extent.XMax + extent_buffer, points_extent.YMax + extent_buffer]
     
         # but where the extended buffer goes beyond the extent of Australia, limit to Australia
         xmin=max(round(new_extent[0],2),Australia_extent[0])
@@ -254,25 +261,19 @@ for model_group in model_groups:
     
         env.workspace = source_location
         datasets = arcpy.ListRasters("*","GRID")
-        
-        
-        # ############ A TEMP DEBUG LINE
-        skip = False
-        # ############ A TEMP DEBUG LINE.  Once it's working, delete these lines, and the two IF statements below that use 'skip'
-        
+         
         for dataset in datasets:
         
             #check if the name is a layer to use - in this case bio01 - bio19
             if (dataset in extra_layers) or (dataset[0:3] == "bio" and (str.isdigit(str(dataset[-2:])) and int(dataset[-2:]) <= 19)):
                             
                 # finally, extract the required part of the grid, and write it to specified folder, with a suffix
-                if not skip:
-                    maskedgrid = arcpy.sa.ExtractByMask(dataset,pointbuffer)
+                maskedgrid = arcpy.sa.ExtractByMask(dataset,pointbuffer)
                 model_group_sp = model_group[(model_group.find("_")+1):] # use just the species name in the grid name (not the whole binomial)
                 new_grid_name = dataset + "_" + model_group_sp + "_msk.asc"
                 print model_group, dataset, new_grid_name
-                if not skip:
-                    arcpy.RasterToASCII_conversion(maskedgrid, target_location + new_grid_name)
+
+                arcpy.RasterToASCII_conversion(maskedgrid, target_location + new_grid_name)
 
         # include the bias grid in rasters to be clipped, copied
         if use_bias_grid:
@@ -291,9 +292,9 @@ for model_group in model_groups:
         maxent_call = "java -mx1024m -cp " + maxent_loc + " density.MaxEnt nowarnings noprefixes novisible outputdirectory=" + maxent_model_base +  " samplesfile=" + model_group_sites_csv + " environmentallayers=" + target_location + " replicates=" + str(maxent_replicates) + " autorun randomseed threads=" + str(processor_threads)
         
         if jackknife:
-            maxent_call += " jackknife="
+            maxent_call += " jackknife "
         else:
-            maxent_call += " nojackknife="
+            maxent_call += " nojackknife "
         
         if use_bias_grid:
             maxent_call += " biasfile=" + target_location + new_grid_name + " biastype=3 -N " + bias_grid_name + "_" + model_group_sp + "_msk"
@@ -319,7 +320,7 @@ for model_group in model_groups:
             
         print "Now deleting buffered grids for: " + model_group
         
-        # delete temporary files
+        # delete temporary files created by ArcGIS
         env.workspace = target_location
         wildcard = genus + "*"
         keep_datasets = arcpy.ListRasters(wildcard)
@@ -327,6 +328,10 @@ for model_group in model_groups:
         for dataset in all_datasets:
             if dataset not in keep_datasets:
                 arcpy.Delete_management(dataset)
+                
+        ## delete temporary files created by MaxEnt
+        #system_call = "del " + model_group + "*[0-9]*"
+        #subprocess.call(maxent_call)
         
         print "\n****************************\nFinished models for " + model_group + "\n****************************\n"
         
