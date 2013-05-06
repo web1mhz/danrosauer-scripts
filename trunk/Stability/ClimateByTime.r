@@ -13,9 +13,7 @@ point.time.series = function (point_x,point_y,grid_name,directory) {
   
   #cycle through the projections
   for (time in times$year) {
- 
     model_count = model_count+1
-  
     point <- data.frame(x=point_x,y=point_y)
     cat("Reading data for year", time,"\n")
     grid_path <- paste(directory,time,grid_name,sep="/")
