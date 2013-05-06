@@ -3,7 +3,7 @@
 
 ################################################################################
 #define directories
-work.dir = 'C:/Users/u3579238/Work/Refugia/Stability/SEA_RF/maxent.output/'; setwd(work.dir)
+work.dir = 'C:/Users/u3579238/Work/Refugia/Stability/CYP_RF/maxent.output/'; setwd(work.dir)
 mxe.dir = 'C:/Users/u3579238/Work/Refugia/Stability/OZ.climates/mxe/'
 maxent.jar = 'C:/Users/u3579238/Work/Refugia/Stability/maxent.jar'
 

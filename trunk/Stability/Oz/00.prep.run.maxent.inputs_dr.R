@@ -8,11 +8,11 @@ library(SDMTools)
 ################################################################################
 
 #define directories
-work.dir = 'C:/Users/u3579238/Work/Refugia/Stability/SEA_RF/'; setwd(work.dir)
+work.dir = 'C:/Users/u3579238/Work/Refugia/Stability/CYP_RF/'; setwd(work.dir)
 current.bioclim = 'C:/Users/u3579238/Work/Refugia/Stability/OZ.climates/bioclim/000'
 maxent.jar = 'C:/Users/u3579238/Work/Refugia/Stability/maxent.jar'
 #veg_grid = 'C:/Users/u3579238/Work/Refugia/Stability/Oz/pre1750_mvg.asc.gz'
-veg_grid = 'C:/Users/u3579238/Work/Refugia/Stability/NVIS/SEA_all_rainforest.asc'
+veg_grid = 'C:/Users/u3579238/Work/Refugia/Stability/NVIS/CYP_all_rainforest.asc'
 
 output_folder_name = 'maxent.output'
 #mask_layer_name='new_mask'
