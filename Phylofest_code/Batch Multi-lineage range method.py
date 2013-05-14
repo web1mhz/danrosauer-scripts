@@ -36,11 +36,13 @@ sys.path.append("C:\\Users\\u3579238\Work\Phylofest\\")
 import LineageFunctions
 
 ### PARAMETERS ###
-genus = "Saltuarius"  # genus could refer to any group being handled as a set
+genus = "Phyllurus"  # genus could refer to any group being handled as a set
 higher_taxon = "geckoes"
 base_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\" + higher_taxon + "\\"
 sequence_site_filename = base_dir + "sequence_sites\\" + genus + "_lin_loc.csv"
 target_location = base_dir + "lineage_models\\" + genus + "\\"  # where the lineage model grids and working data
+use_edited = True
+edited_suffix = '_edited'
 
 output_gdb_name = "results.gdb"
 scratch_workspace = "C:\\Users\\u3579238\\Work\\Phylofest\\Models\\"  #scratch workspace is used by ArcGIS for temporary files during analysis
@@ -92,32 +94,41 @@ with open(sequence_site_filename, 'rb') as csvfile:
     Long=[]
     GroupList=[]
     GroupLineageList =[]
+    usecol = -1    
     
     for row in sequence_csv:
         # Save header row.
         if rownum == 0:
             header = row
             rownum += 1
+            
+            # find the column called 'use'
+            columns = range(len(header))
+            for k in columns:
+                if str.lower(header[k]) == "use":
+                    usecol = k
+                    break            
         else:
-            try:        # if the lat or long can't be converted to a number, then skip that row
-                Lat.append(float(row[5]))
-                try:
-                    Long.append(float(row[6]))
-                    # code gets to here for valid lat and long, so other steps can go here too
-                    #rowdata.append(row)
-                    Species.append(row[2])
-                    ModelGroup.append(row[3])
-                    Lineage.append(row[4])                    
-                    if row[3] not in GroupList:
-                        GroupList.append(row[3])
-                    if row[1:5] not in GroupLineageList and len(row[4]) > 0:
-                        GroupLineageList.append(row[1:5])
-                    rownum += 1
+            if (usecol == -1 or row[usecol] == '1'): # only proceed where 'use' = 1 and x and y are within defined limits            
+                try:        # if the lat or long can't be converted to a number, then skip that row
+                    Lat.append(float(row[5]))
+                    try:
+                        Long.append(float(row[6]))
+                        # code gets to here for valid lat and long, so other steps can go here too
+                        #rowdata.append(row)
+                        Species.append(row[2])
+                        ModelGroup.append(row[3])
+                        Lineage.append(row[4])                    
+                        if row[3] not in GroupList:
+                            GroupList.append(row[3])
+                        if row[1:5] not in GroupLineageList and len(row[4]) > 0:
+                            GroupLineageList.append(row[1:5])
+                        rownum += 1
+                    except:
+                        1==1  # a nothing action to meet the syntax rules
                 except:
                     1==1  # a nothing action to meet the syntax rules
-            except:
-                1==1  # a nothing action to meet the syntax rules
-    # so now we have a list for each column, excluding rows with null coordinates
+        # so now we have a list for each column, excluding rows with null coordinates
 
 # set the geoprocessing environment
 env.workspace  = target_location_ESRI + output_gdb_name
@@ -128,9 +139,10 @@ env.extent = Australia_extent
 try:
     spRef = "GEOGCS['GCS_WGS_1984',DATUM['D_WGS_1984',SPHEROID['WGS_1984',6378137.0,298.257223563]],PRIMEM['Greenwich',0.0],UNIT['Degree',0.0174532925199433]]"
     points_layer = "sequenced_sites"
-    #arcpy.MakeXYEventLayer_management(sequence_site_filename, "long", "lat", target_location_ESRI+points_layer, spRef)
     layer_result = arcpy.MakeXYEventLayer_management(sequence_site_filename, "long", "lat", points_layer, spRef)
     points_layer = layer_result[0]
+    if usecol > -1:   # filter by the 'use' column if there is one.
+        points_layer.definitionQuery = "`Use` = 1"
     
 except:
    # If an error occurred print the message to the screen
@@ -150,14 +162,16 @@ points_fc = outLocation + "/" + outFeatureClass
 # Loop through the list of Model Groups
 for group in GroupList:
     if group != 0 and group != "":
-    #if group == "Saproscincus challengeri":   # this is a temp line to model just one group!!
-    
+    #if group == "Lampropholis_delicata":   # this is a temp line to model just one group!!
+
         print "\nStarting group " + group + "\n"
     
-        # set the environment
+        # choose the species model and set the environment
         maxent_model = maxent_model_base + "\\" + string.replace(group," ","_")
+        if use_edited and arcpy.Exists(maxent_model + edited_suffix):
+            maxent_model = maxent_model + edited_suffix
+
         env.snapRaster = maxent_model
-        env.mask = maxent_model
         env.extent=maxent_model
     
         # define spatial data for this group
@@ -172,7 +186,7 @@ for group in GroupList:
         
         print "Buffering all points for " + group + "\n"
         point_buffer = arcpy.sa.EucDistance(points_layer,buffer_dist,grid_resolution)
-    
+
         ## get a list of the lineages in this group
         lineage_list=[]
         print "Lineages in " + group + ":"
@@ -210,14 +224,22 @@ for group in GroupList:
     
         print "\nLooping through the lineages in " + group + " to generate weight grids\n"
         count = 0
+        model_cost = -1 * arcpy.sa.Ln(maxent_model)
         
         for lineage in lineage_list:
             count += 1
         
-            where_clause = '"ModelGroup" = ' + "'" + group + "' and " + '"' + Lineage_field_name + '"' + " = " + "'" + lineage + "'"
-            arcpy.SelectLayerByAttribute_management(lin_lyr, "NEW_SELECTION", where_clause)
+            try:  # the two versions here (try and except) version is to allow for lineage being treated as either a number or text
+                where_clause = '"ModelGroup" = ' + "'" + group + "' and " + '"' + Lineage_field_name + '"' + " = " + "'" + lineage + "'"
+                arcpy.SelectLayerByAttribute_management(lin_lyr, "NEW_SELECTION", where_clause)
+            
+            except:  
+                where_clause = '"ModelGroup" = ' + "'" + group + "' and " + '"' + Lineage_field_name + '"' + " = " + lineage
+                arcpy.SelectLayerByAttribute_management(lin_lyr, "NEW_SELECTION", where_clause)                
+            
             arcpy.CopyFeatures_management(lin_lyr, "lineage_points", "", "0", "0", "0")
-            layers_to_delete.append("lineage_points")
+            if count == 1:
+                layers_to_delete.append("lineage_points")
         
             # create a distance layer for the current lineage
             if str(lineage) == "0":
@@ -229,7 +251,6 @@ for group in GroupList:
             if Distance_method == "model-cost":                                   ## STEP 5b
                 ## calculates the least cost distance to the nearest lineage point
                 ## the result is written directly to lineage_dist_gridname
-                model_cost = -1 * arcpy.sa.Ln(maxent_model)
                 lin_dist = arcpy.sa.PathDistance("lineage_points",model_cost)
                 if Weight_function == "inverse_square":                 ## STEP 6b
                     lin_weight = 1/(lin_dist ** 2)

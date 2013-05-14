@@ -1,4 +1,5 @@
 import arcpy, sys, numpy, csv, os, string, math, subprocess
+from datetime import datetime
 from arcpy import env
 import arcpy.sa
 arcpy.CheckOutExtension("Spatial")
@@ -25,19 +26,21 @@ source_location = "c:\\Users\\u3579238\\GISData\\EnvironmentGrids\\AusGDMGrids\\
 target_location = "species_models\\clipped_grids\\" + genus + "\\" # where the clipped grids go
 
 # bioclim layers 1 to 19 are matched automatically.  Any other layers to use are listed here.
-extra_layers = ["twi3se_01deg","clay30e_01deg","slope","geollmeanage"]
+#extra_layers = ["twi3se_01deg","clay30e_01deg","slope","geollmeanage"]
+extra_layers = ["twi3se_01deg","slope","geollmeanage"]
 
 use_bias_grid  = False
-bias_grid_name = "sample_density_1.asc"
-
-output_gdb_name = "maxent_models.gdb"
-model_suffix = "_median"
+bias_grid_name = "skink_samplesites" # this must be an .asc file, but omit the .asc here 
 maxent_replicates = 25
-threads = 5  # this sets how many processors maxent can use, and is an experimental Maxent feature. Watch carefully
+jackknife = False
+processor_threads = 10  # this sets how many processors MaxEnt can use.
+
+output_gdb_name = "maxent_models.gdb" 
+model_suffix = "_median"
 
 # a changeable list to allow for species in the dataset to be skipped
-named_species   = ["Phyllurus_gulbaru"]
-use_list        = "skip"  #specify whether to:
+named_species   = ["Phyllurus_MEQ_gulbaru_grp"]
+use_list        = "do"  #specify whether to:
                             #do - the named species (use_list="do")
                             #skip - the named species (use_list="skip")
                             #do all the species in the data and ignore the list (use_list="" or anything else);
@@ -155,11 +158,11 @@ for row in sites:
     if row[0] not in model_groups:
         model_groups.append(row[0])
         
-    #if needed, create a folder for location files in the genus
-    sites_dir = base_dir + combined_sites_folder + genus
-    if not os.path.exists(sites_dir):
-        os.makedirs(sites_dir)
-        
+#if needed, create a folder for location files in the genus
+sites_dir = base_dir + combined_sites_folder + genus
+if not os.path.exists(sites_dir):
+    os.makedirs(sites_dir)
+
 # write the combined location record list to file
 os.chdir(target_location)
 csv.register_dialect("myDialect",lineterminator="\n")
@@ -208,7 +211,7 @@ for model_group in model_groups:
         points_properties = arcpy.Describe(points_layer)
         points_extent = points_properties.extent
         extent_buffer = buffer_dist * 1.25
-        new_extent = [points_extent.xmin - extent_buffer, points_extent.ymin - extent_buffer, points_extent.xmax + extent_buffer, points_extent.ymax + extent_buffer]
+        new_extent = [points_extent.XMin - extent_buffer, points_extent.YMin - extent_buffer, points_extent.XMax + extent_buffer, points_extent.YMax + extent_buffer]
     
         # but where the extended buffer goes beyond the extent of Australia, limit to Australia
         xmin=max(round(new_extent[0],2),Australia_extent[0])
@@ -235,20 +238,29 @@ for model_group in model_groups:
                 print model_group, dataset, new_grid_name
                 arcpy.RasterToASCII_conversion(maskedgrid, target_location + new_grid_name)
 
-        # add code here to include the bias grid in rasters to be clipped, copied
+        # include the bias grid in rasters to be clipped, copied
         if use_bias_grid:
             env.workspace = base_dir + "species_models\\bias_files\\"
             #extract the required part of the grid, and write it to specified folder, with a suffix
-            maskedgrid = arcpy.sa.ExtractByMask(bias_grid_name,pointbuffer)
-            new_grid_name = model_group_sp + "_" + bias_grid_name
-            print model_group, new_grid_name
+            maskedgrid = arcpy.sa.ExtractByMask((bias_grid_name + ".asc"),pointbuffer)
+            new_grid_name = bias_grid_name + "_" + model_group_sp + "_msk.asc"
+            print "\nBias grid: " + model_group, new_grid_name
             arcpy.RasterToASCII_conversion(maskedgrid, target_location + new_grid_name)
                 
         #RUN THE MAXENT MODEL HERE
         # create the output folder
         if not os.path.exists(maxent_model_base):
             os.makedirs(maxent_model_base)
-        maxent_call = "java -mx1024m -cp " + maxent_loc + " density.MaxEnt nowarnings noprefixes novisible jackknife outputdirectory=" + maxent_model_base +  " samplesfile=" + model_group_sites_csv + " environmentallayers=" + target_location + " replicates=" + str(maxent_replicates) + " autorun randomseed threads=4"
+            
+        maxent_call = "java -mx1024m -cp " + maxent_loc + " density.MaxEnt nowarnings noprefixes novisible outputdirectory=" + maxent_model_base +  " samplesfile=" + model_group_sites_csv + " environmentallayers=" + target_location + " replicates=" + str(maxent_replicates) + " autorun randomseed threads=" + str(processor_threads)
+        
+        if jackknife:
+            maxent_call += " jackknife "
+        else:
+            maxent_call += " nojackknife "
+        
+        if use_bias_grid:
+            maxent_call += " biasfile=" + target_location + new_grid_name + " biastype=3 -N " + bias_grid_name + "_" + model_group_sp + "_msk"
         
         print "\nAbout to start maxent model for: " + model_group + "  replicates: " + str(maxent_replicates) + "\n"
         try:
@@ -285,5 +297,4 @@ for model_group in model_groups:
     else:
         print "\n****************************\nSkipping " + model_group + "\n****************************\n"
         
-print "\n****************************\nFinished all models for " + genus + "\n****************************\n"
-
+print "\n****************************\nFinished all models for " + genus + " at " + str(datetime.now()) + "\n****************************\n"
