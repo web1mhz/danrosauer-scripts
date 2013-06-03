@@ -15,10 +15,14 @@ def getFieldMinMax(layer,target_field):
     ##returns the minimum and maximum values in a numeric field of an attribute table
     import arcpy.analysis
 
-    rows=arcpy.SearchCursor(layer)
-    value_list =[]
+    #fields = [target_field]
+    rows=arcpy.da.SearchCursor(layer,(target_field))
+    #value_list =[row[0] for row in rows]
+    
+    value_list=[]
     for row in rows:
-        this_value = row.getValue(target_field)
+        #this_value = row.getValue(target_field)
+        this_value = row[0]
         if this_value not in value_list:
             if this_value != None:
                 value_list.append(this_value)

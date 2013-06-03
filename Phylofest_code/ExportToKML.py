@@ -47,9 +47,9 @@ with open(sequence_site_filename, 'rb') as csvfile:
                     if row[3] not in GroupList and len(row[3])>0:
                         GroupList.append(row[3])
                 except:
-                    1==1  # a nothing action to meet the syntax rules
+                    pass  # a nothing action to meet the syntax rules
             except:
-                1==1  # a nothing action to meet the syntax rules
+                pass  # a nothing action to meet the syntax rules
     # so now we have a list of model groups, excluding rows with null coordinates
 
 # set the geoprocessing environment

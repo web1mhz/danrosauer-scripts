@@ -11,11 +11,12 @@
 #	[a] euclidean distance outside the polygon (no maximum)
 #	[b] use Con to set eucdist > D to D. (so distance plateaus at D)
 #	[c] new model grid = model * ((D - [b]) / D)
+#       [d] set 0 values to a tiny, non-zero value to avoid division by zero errors
 #
 #      So, the model value is:
 #	(a) unchanged within the polygon
 #	(b) declines from its original value to 0 over a distance D from the polygon
-#	(c) is 0 beyond distance D from the polygon
+#	(c) is a tiny minimum value beyond distance D from the polygon
 #
 #Environments:
 #Use original model for extent, snap raster, grid size
@@ -36,27 +37,21 @@ import LineageFunctions
 ### PARAMETERS ###
 rules_gdb = "C:\\Users\\u3579238\\Work\\Phylofest\\Models\\EditModels.gdb"
 rules_fc  = "Model_edits"
-higher_taxon = "geckoes"
+higher_taxon = "skinks"
 model_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\" + higher_taxon + "\\species_models\\"
 output_location = rules_gdb  # where the edited models go.  Could be different to the rules_gdb
+model_edited_suffix = "_edited"
 scratch_workspace = "C:\\Users\\u3579238\\Work\\Phylofest\\Models\\"  #scratch workspace is used by ArcGIS for temporary files during analysis
 scratch_gdb = "C:\\Users\\u3579238\\Work\\Phylofest\\Models\\scratch.gdb"
 grid_resolution = 0.01
- 
-### create the scratch geodatabase if needed (to store temporary layers during analysis)
-#try:
-#    arcpy.CreateFileGDB_management(scratch_workspace, scratch_gdb)
-#except:
-#    print "File geodatabase "+ scratch_gdb + " already exists or creation failed"
+minimum_model_value = 0.0001
 
-## create the output geodatabase if needed
-#if not os.path.exists(target_location):
-#    os.makedirs(target_location)
-#try:
-#    target_location_ESRI = string.replace(target_location,"\\","/")
-#    arcpy.CreateFileGDB_management(target_location_ESRI, "results.gdb")
-#except:
-#    print "File geodatabase "+target_location + output_gdb_name + " already exists or creation failed"
+# a changeable list to allow for species in the dataset to be skipped
+named_species   = ["Saproscincus_mustelinus"]
+use_list        = "do"  #specify whether to:
+                            #do - the named species (use_list="do")
+                            #skip - the named species (use_list="skip")
+                            #do all the species in the data and ignore the list (use_list="" or anything else);
 
 # Set the geoprocessing environment
 env.workspace = scratch_gdb
@@ -72,13 +67,18 @@ for row in rule_cursor:
     rule_distance=row[4]
     rule_higher_taxon = row[5]
     
+    # restrict the GroupList to particular species based on the names_species parameter
+    if (use_list == "do" and rule_taxon not in named_species) or (use_list == "skip" and rule_taxon in named_species):
+        print("\nskipping " + rule_taxon)
+        continue    
+    
     if rule_higher_taxon == higher_taxon:
     
         model_in = model_dir + "maxent\\" + rule_taxon.split("_")[0] + "\\maxent_models.gdb\\" + rule_taxon
         env.snapRaster = model_in
         env.extent     = model_in
         env.mask       = model_in
-        model_out_name = output_location + "\\" + rule_taxon + "_edited"
+        model_out_name = output_location + "\\" + rule_taxon + model_edited_suffix
         
         # check for fade where distance = 0 (would cause division by 0 error)
         if rule_action == "fade" and rule_distance <= 0:
@@ -90,6 +90,7 @@ for row in rule_cursor:
             eucdist_poly = arcpy.sa.EucDistance(rule_poly, 10, grid_resolution)
             eucdist_poly_con = arcpy.sa.Con(eucdist_poly >= rule_distance, rule_distance, eucdist_poly)
             model_out = model_in * ((rule_distance - eucdist_poly_con) / rule_distance)
+            model_out = arcpy.sa.Con(model_out>minimum_model_value, model_out, minimum_model_value)
             
         elif rule_action == "include":
             print "\nAbout to do " + rule_taxon + ". Include only areas within polygon\n"
@@ -103,7 +104,7 @@ for row in rule_cursor:
             model_out = model_in - model_neg
             
         model_out.save(model_out_name)
-        model_out.save(model_in + "_edited")
+        model_out.save(model_in + model_edited_suffix)
      
 # PUT EDITED RASTER BACK IN ORIGINAL LOCATION
 
