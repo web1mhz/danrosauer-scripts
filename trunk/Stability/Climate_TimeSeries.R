@@ -4,16 +4,16 @@ source("ClimateByTime.r")
 
 ################ set the parameters ################
 env.dir         <- "C:/Users/u3579238/Work/Refugia/Stability/OZ.climates/bioclim"
-model.dir       <- "C:/Users/u3579238/Work/Refugia/Stability/SEA_RF/maxent.output"
-stability.dir   <- "C:/Users/u3579238/Work/Refugia/Stability/SEA_RF/stability"
+model.dir       <- "C:/Users/u3579238/GISData/Helping/Sally/Wyulda_stability/maxent.output_less_bias_2_5deg"
+stability.dir   <- "C:/Users/u3579238/GISData/Helping/Sally/Wyulda_stability/stability_2_5deg_less_bias"
 stability.file  <- "static.sum.cost.asc"
 
-x               <- 149.134
-y               <- -35.276
-layer           <- "bioclim_10.asc.gz"
-env_value_name  <- "temperature of warmest qtr"
-is_temp         <- TRUE
-plot_model      <- FALSE
+x               <- 127.82
+y               <- -14.61
+layer           <- "bioclim_16.asc.gz"
+env_value_name  <- "precipitation of wettest qtr"
+is_temp         <- FALSE
+plot_model      <- TRUE
 ################ end of parameters ################
 
 # get the climate time series
@@ -42,8 +42,8 @@ par(mar=c(5,4,4,5)+.1)
 
 header <- paste("Time series of",env_value_name,"since 120kya\nLatitude:",y,"Longitude:",x)
 yrange <- max(times$value) - min(times$value)
-ymin <- min(times$value) - yrange/6
-ymax <- max(times$value) + yrange/6
+ymin <- min(times$value,na.rm=T) - yrange/6
+ymax <- max(times$value, na.rm=T) + yrange/6
 
 plot(times$yearnum,times$value,xlim=c(120,0),ylim=c(ymin,ymax),type="l",col="red", lwd=2,main=header,ylab=env_value_name,xlab="thousands of years before present", cex.lab=1.3, cex.axis=1.3)
 abline(h=times$value[1],lty=2,col="red",lwd=2)
