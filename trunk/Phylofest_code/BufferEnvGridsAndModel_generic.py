@@ -37,7 +37,7 @@ target_location = "clipped_grids\\" + genus + "\\" # where the clipped grids go
 
 # bioclim layers 1 to 19 are matched automatically.  Any other layers to use are listed here.
 #extra_layers = ["twi3se_01deg","clay30e_01deg","slope","geollmeanage"]
-extra_layers = ["twi3se_01deg","slope","geollmeanage","mean_00_12_max_res_01"]
+extra_layers = ["twi3se_01deg","slope","geollmeanage","fparmnmax1_5k"]
 
 use_bias_grid  = False
 bias_grid_name = "" # this must be an .asc file, but omit the .asc here 
@@ -128,9 +128,9 @@ with open(species_site_filename, 'rb') as csvfile:
                             newrow.append(row[longcol])
                             species_sites.append(newrow)
                     except:
-                        1==1
+                        pass
                 except:
-                    1==1
+                    pass
     
 #load the tissue site coordinates
 if (use_tissue_sites):
@@ -171,9 +171,9 @@ if (use_tissue_sites):
                                 newrow.append(row[longcol])
                                 tissue_sites.append(newrow)
                         except:
-                            1==1
+                            pass
                     except:
-                        1==1
+                        pass
                         
     #and combine them
     sites = species_sites + tissue_sites

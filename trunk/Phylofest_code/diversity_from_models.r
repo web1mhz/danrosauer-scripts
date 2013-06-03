@@ -1,3 +1,5 @@
+## this script calculates richness and endemism from modelled suitability surfaces
+## it requires all the model grids to have the same e
 
 library(SDMTools)
 
@@ -38,28 +40,31 @@ generate_coords = function(rowcount,colcount) {
 ################################################################################
 
 #define directories
-#base.dir   = 'C:/Users/u3579238/Work/Refugia/DistModels_Reside/Reptiles_cropped/'; setwd(base.dir)
-base.dir   = 'C:/Users/u3579238/Work/Phylofest/Models/combined/lineage_models_ext/'; setwd(base.dir)
-output.dir = 'C:/Users/u3579238/Work/Refugia/Results/'
-file_suffix = ".asc"  # frog models end in _1999.asc.gz, reptile models don't
+#base.dir   =   'C:/Users/u3579238/Work/Refugia/DistModels_Reside/Reptiles_cropped/'
+base.dir   =    'C:/Users/u3579238/Work/Phylofest/Models/combined/lineage_models_aligned_rf_strict/'
+output.dir =    'C:/Users/u3579238/Work/Refugia/Results/'
+file_suffix =   '.asc'  # frog models end in _1999.asc.gz, reptile models don't
+template_grid = 'C:/Users/u3579238/Work/Phylofest/Models/masks/bio1_east_mask.asc'
 
-richness_output = "rept_rich_lin" #"frog_rich_sp_thr0.5"
-endemism_output = "rept_end_lin"  #"frog_end_sp_thr0.5"
+richness_output = "rept_rich_lin_25Jan_thresh_01"
+endemism_output = "rept_end_lin_25Jan_thresh_01"  #"frog_end_sp_thr0.5"
+threshold = 0.01  # this is not a species level threshold, but a generic used for each lineage model
 
-threshold = 0.0  # this is not a species level threshold, but a generic threshold across all the models
+####  end of parameters
+
+setwd(base.dir)
 
 files = list.files(path = base.dir, pattern = file_suffix, recursive = FALSE,ignore.case = TRUE, include.dirs = FALSE)
 
-#first_model.asc = read.asc.gz(files[1])
-first_model.asc = read.asc(files[1])
-model_rows=nrow(first_model.asc)
-model_cols=ncol(first_model.asc)
+#template.asc = read.asc.gz(files[1])
+template.asc = read.asc(template_grid)
+model_rows=nrow(template.asc)
+model_cols=ncol(template.asc)
 
 # the original version, excluding NA cells
-pos = as.data.frame(which(is.finite(first_model.asc),arr.ind=TRUE)) #get all points that have data
+pos = as.data.frame(which(is.finite(template.asc),arr.ind=TRUE)) #get all points that have data
 
-# trying a list of coords based on the grid size
-#pos = data.frame(generate_coords(model_rows,model_cols))
+i <- 0
 
 for (tfile in files) {
   checkname=unlist(strsplit(tfile,".",fixed=T))
@@ -68,12 +73,12 @@ for (tfile in files) {
     tasc = read.asc(tfile)                                #read in the data    
     dataname=gsub(file_suffix,'',tfile)
     if (dataname != "Cophixalus_peninsularis") {              #skipping a dodgy model
-
       pos[dataname] = tasc[cbind(pos$row,pos$col)]            #append the data
       pos[(which(pos[dataname]< threshold)),dataname] <- 0    # set values below the threshold to 0
       pos[(which(is.na(pos[dataname]))),dataname]     <- 0    # set the nulls to 0    
-      cat("\n",dataname," loaded")
-    }
+      i <- i+1
+      cat("\n",i,dataname,"loaded")
+    }   
   }
 }
 
@@ -99,5 +104,5 @@ pos_output <- pos[,c(2,1,cols+1,cols+2)]
 
 dataframe2asc(pos_output,c(richness_output,endemism_output),output.dir)
 
-# write.asc(rich.asc, paste(output.dir,'sp_richness.asc',sep='') #write out the ascii grid file
-# image.grid(rich.asc,paste(output.dir,'sp_richness.png',sep=''),zlim=c(0,1),cols=model_cols) #plot the image after logging the actual data
+#write.asc(.asc, paste(output.dir,'sp_richness.asc',sep='') #write out the ascii grid file
+#image.grid(rich.asc,paste(output.dir,'sp_richness.png',sep=''),zlim=c(0,1),cols=model_cols) #plot the image after logging the actual data

@@ -1,4 +1,4 @@
-import arcpy, sys, numpy, csv, os, string, math, subprocess
+import arcpy, sys, numpy, csv, os, string, math, subprocess, fnmatch
 from datetime import datetime
 from arcpy import env
 import arcpy.sa
@@ -8,8 +8,8 @@ arcpy.env.overwriteOutput=True
 ### PARAMETERS ###
 os.linesep ="\n"
 
-genus = "Phyllurus"  # genus could refer to any group being handled as a set
-higher_taxon = "geckoes"
+genus = "Carlia"  # genus could refer to any group being handled as a set
+higher_taxon = "skinks"
 base_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\" + higher_taxon + "\\"
 species_site_filename = "species_sites\\" + genus + "_ALA.csv"
 combined_sites_folder    = "species_sites\\"
@@ -33,14 +33,14 @@ use_bias_grid  = False
 bias_grid_name = "skink_samplesites" # this must be an .asc file, but omit the .asc here 
 maxent_replicates = 25
 jackknife = False
-processor_threads = 10  # this sets how many processors MaxEnt can use.
+processor_threads = 9  # this sets how many processors MaxEnt can use.
 
 output_gdb_name = "maxent_models.gdb" 
 model_suffix = "_median"
 
 # a changeable list to allow for species in the dataset to be skipped
-named_species   = ["Phyllurus_MEQ_gulbaru_grp"]
-use_list        = "do"  #specify whether to:
+named_species   = [""]
+use_list        = ""  #specify whether to:
                             #do - the named species (use_list="do")
                             #skip - the named species (use_list="skip")
                             #do all the species in the data and ignore the list (use_list="" or anything else);
@@ -108,9 +108,9 @@ with open(species_site_filename, 'rb') as csvfile:
                         if (row[1] > ylim_min_points) and (row[2] > xlim_min_points): # add row if x and y are within defined limits
                             species_sites.append(row[:3])
                     except:
-                        1==1
+                        pass
                 except:
-                    1==1
+                    pass
     
 #load the sequenced site coordinates
 sequence_site_filename = base_dir + sequence_site_filename
@@ -144,9 +144,9 @@ with open(sequence_site_filename, 'rb') as csvfile:
                             sequence_sites.append([row[3],row[5],row[6]])
                         rownum += 1
                     except:
-                        1==1
+                        pass
                 except:
-                    1==1
+                    pass
 
 #and combine them
 sites = species_sites + sequence_sites
@@ -281,9 +281,8 @@ for model_group in model_groups:
         except:
             print "\n*******************\nModel failed for ", model_group, "\n\n"
             
+        # delete ArcGIS temporary files
         print "Now deleting buffered grids for: " + model_group
-        
-        # delete temporary files
         env.workspace = target_location
         wildcard = genus + "*"
         keep_datasets = arcpy.ListRasters(wildcard)
@@ -291,7 +290,26 @@ for model_group in model_groups:
         for dataset in all_datasets:
             if dataset not in keep_datasets:
                 arcpy.Delete_management(dataset)
+                
+        # delete Maxent temporary files
+        print "Now deleting redundant Maxent files for: " + model_group
+        os.chdir(maxent_model_base)
+        files = os.listdir(maxent_model_base)
+        files_to_delete = fnmatch.filter(files,'*_[0-9]*')
+        del_count = 0
+        for file in files_to_delete:
+            os.remove(file)
+            del_count +=1
+
+        plots_dir = maxent_model_base + "\\plots"
+        os.chdir(plots_dir)
+        files = os.listdir(plots_dir)
+        files_to_delete = fnmatch.filter(files,'*_[0-9]*')
+        for file in files_to_delete:
+            os.remove(file)
+            del_count +=1
         
+        print "Deleted " + str(del_count) + " files created by Maxent\n"
         print "\n****************************\nFinished models for " + model_group + "\n****************************\n"
         
     else:
