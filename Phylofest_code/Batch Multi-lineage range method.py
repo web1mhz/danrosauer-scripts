@@ -36,10 +36,10 @@ sys.path.append("C:\\Users\\u3579238\Work\Phylofest\\")
 import LineageFunctions
 
 ### PARAMETERS ###
-higher_taxon = "skinks"
+higher_taxon = "geckoes"
 base_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\" + higher_taxon + "\\"
 
-genus_list = ["Saproscincus"]
+genus_list = ["Phyllurus"]
 
 for genus in genus_list:
     print "\n" + genus + "\n"
@@ -74,7 +74,7 @@ for genus in genus_list:
                                 #skip - the named species (use_list="skip")
                                 #do all the species in the data and ignore the list (use_list="" or anything else);
     Lin_exclude_list = ["_","lin_","CZ","lin_CZ","0"]
-    Lin_exclude_list = Lin_exclude_list + ["e"]  # this is a temporary workaround for one lineage of Saproscincus mustelinus that crashes the script
+    #Lin_exclude_list = Lin_exclude_list + ["e"]  # this is a temporary workaround for one lineage of Saproscincus mustelinus that crashes the script
      
     # create the scratch geodatabase if needed (to store temporary layers during analysis)
     try:
@@ -120,7 +120,7 @@ for genus in genus_list:
                 columns = range(len(header))
                 for k in columns:
                     if str.lower(header[k]) == "use":
-                        usecol = k
+                        UseCol = k
                         break
                 
             else:
@@ -267,7 +267,7 @@ for genus in genus_list:
                 if Distance_method == "model-cost":                                   ## STEP 5b
                     ## calculates the least cost distance to the nearest lineage point
                     ## the result is written directly to lineage_dist_gridname
-                    model_cost = -1 * arcpy.sa.Ln(maxent_model)
+                    model_cost = -1 * arcpy.sa.Ln(maxent_model)  # this operation can be done just once per model group, outside the current loop
                     lin_dist = arcpy.sa.PathDistance("lineage_points",model_cost)
                     # change zero values to a very small non-zero value, to avoid nodata in division
                     lin_dist = arcpy.sa.Con(lin_dist==0,0.0001,lin_dist)
