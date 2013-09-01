@@ -4,9 +4,10 @@
 #
 #in the model correction polygon feature class, create polygons to be used in 3 ways (so far)
 #
-#1) exclude. For the named species, set areas in the polygon to 0
-#2) include. For the named species, set areas outside the polygon to 0
-#3) fade.    For the named species, areas outside the polygon, up to the specified distance (D) are downweighted as follows.  Beyond this distance, value is 0:
+#1) exclude.        For the named species, set areas in the polygon to 0
+#2) include only.   For the named species, set areas outside the polygon to 0
+#3) fade.           For the named species, areas outside the polygon, up to the specified distance (D) are
+#                     downweighted as follows.  Beyond this distance, value is 0:
 #	
 #	[a] euclidean distance outside the polygon (no maximum)
 #	[b] use Con to set eucdist > D to D. (so distance plateaus at D)
@@ -14,15 +15,14 @@
 #       [d] set 0 values to a tiny, non-zero value to avoid division by zero errors
 #
 #      So, the model value is:
-#	(a) unchanged within the polygon
-#	(b) declines from its original value to 0 over a distance D from the polygon
-#	(c) is a tiny minimum value beyond distance D from the polygon
+#	[a] unchanged within the polygon
+#	[b] declines from its original value to 0 over a distance D from the polygon
+#	[c] is a tiny minimum value beyond distance D from the polygon
 #
 #Environments:
 #Use original model for extent, snap raster, grid size
 #
 #The algorithm will loop through rows in the model correction polygon feature class, and apply each rule to the specified model
-#
 #This will make the edits repeatable, explicit.
 
 import arcpy, sys, os, math, numpy, csv, os, string
@@ -37,7 +37,7 @@ import LineageFunctions
 ### PARAMETERS ###
 rules_gdb = "C:\\Users\\u3579238\\Work\\Phylofest\\Models\\EditModels.gdb"
 rules_fc  = "Model_edits"
-higher_taxon = "skinks"
+higher_taxon = "geckoes"
 model_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\" + higher_taxon + "\\species_models\\"
 output_location = rules_gdb  # where the edited models go.  Could be different to the rules_gdb
 model_edited_suffix = "_edited"
@@ -47,7 +47,7 @@ grid_resolution = 0.01
 minimum_model_value = 0.0001
 
 # a changeable list to allow for species in the dataset to be skipped
-named_species   = ["Saproscincus_mustelinus"]
+named_species   = ["Phyllurus_MEQ_gulbaru_grp"]
 use_list        = "do"  #specify whether to:
                             #do - the named species (use_list="do")
                             #skip - the named species (use_list="skip")
