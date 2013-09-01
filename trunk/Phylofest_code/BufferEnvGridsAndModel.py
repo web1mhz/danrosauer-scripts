@@ -8,13 +8,14 @@ arcpy.env.overwriteOutput=True
 ### PARAMETERS ###
 os.linesep ="\n"
 
-genus = "Carlia"  # genus could refer to any group being handled as a set
-higher_taxon = "skinks"
+genus = "frogs"  # genus could refer to any group being handled as a set
+higher_taxon = "frogs"
 base_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\" + higher_taxon + "\\"
 species_site_filename = "species_sites\\" + genus + "_ALA.csv"
 combined_sites_folder    = "species_sites\\"
 combined_sites_csv = genus + "_maxent.csv" #name of the new csv file of species,lat,long to be created
 sequence_site_filename = "sequence_sites\\" + genus + "_lin_loc.csv"
+
 maxent_loc = "C:\\Users\\u3579238\\Work\\Phylofest\Models\\maxent.jar"
 maxent_model_base = base_dir + "species_models\\maxent\\" + genus + "\\"
 
@@ -87,25 +88,40 @@ with open(species_site_filename, 'rb') as csvfile:
         if rownum == 0:
             header = row
             rownum += 1
-            
+            columns = range(len(header))            
+
             # find the column called 'use'
-            columns = range(len(header))
             for k in columns:
                 if str.lower(header[k]) == "use":
                     usecol = k
                     break
+            # find the column called 'Latitude'
+            for k in columns:
+                if str.lower(header[k]) == "latitude":
+                    lat_col = k
+                    break
+            # find the column called 'Longitude'
+            for k in columns:
+                if str.lower(header[k]) == "longitude":
+                    long_col = k
+                    break
+            # find the column called 'Species'
+            for k in columns:
+                if str.lower(header[k]) == "species":
+                    species_col = k
+                    break                  
         else:
             rownum += 1
             if (row[usecol] == '1'): # only proceed where 'use' = 1 and x and y are within defined limits
                 try:        # if the lat or long can't be converted to a number, then skip that row, by not incremeting rownum
-                    num = (float(row[1]))
+                    num = (float(row[lat_col]))
                     try:
                         # code gets to here for valid lat and long, so other steps can go here too
-                        num = (float(row[2]))
-                        row[0] = string.replace(row[0]," ","_")  #replace spaces in taxon name with _
-                        row[1] = float(row[1])  #change x,y coords from text to number
-                        row[2] = float(row[2])
-                        if (row[1] > ylim_min_points) and (row[2] > xlim_min_points): # add row if x and y are within defined limits
+                        num = (float(row[long_col]))
+                        row[species_col] = string.replace(row[species_col]," ","_")  #replace spaces in taxon name with _
+                        row[lat_col] = float(row[lat_col])  #change x,y coords from text to numbeLatituder
+                        row[long_col] = float(row[long_col])
+                        if (row[lat_col] > ylim_min_points) and (row[long_col] > xlim_min_points): # add row if x and y are within defined limits
                             species_sites.append(row[:3])
                     except:
                         pass
