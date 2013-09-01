@@ -1,5 +1,5 @@
 ## this script calculates richness and endemism from modelled suitability surfaces
-## it requires all the model grids to have the same e
+## it requires all the model grids to have the same extent
 
 library(SDMTools)
 
@@ -46,9 +46,9 @@ output.dir =    'C:/Users/u3579238/Work/Refugia/Results/'
 file_suffix =   '.asc'  # frog models end in _1999.asc.gz, reptile models don't
 template_grid = 'C:/Users/u3579238/Work/Phylofest/Models/masks/bio1_east_mask.asc'
 
-richness_output = "rept_rich_lin_25Jan_thresh_01"
-endemism_output = "rept_end_lin_25Jan_thresh_01"  #"frog_end_sp_thr0.5"
-threshold = 0.01  # this is not a species level threshold, but a generic used for each lineage model
+richness_output = "rept_rich_lin_11Jun_thresh_01"
+endemism_output = "rept_end_lin_11Jun_thresh_01"  #"frog_end_sp_thr0.5"
+threshold = 0.01  # this is not a species level threshold, but one used for each lineage model
 
 ####  end of parameters
 
