@@ -20,22 +20,6 @@ image.grid = function(tasc,tfile,zlim=NULL,cols=NULL) {
   dev.off()
 }
 
-generate_coords = function(rowcount,colcount) {
-  rows= c()
-  cols= c()
-  
-  #generate rows
-  for (r in 1:rowcount) {
-    rr=rep(r,colcount)
-    rows = c(rows,rr)
-    
-    cc=1:colcount
-    cols=c(cols,cc)
-  }
-  
-  rc = cbind(rows,cols)
-  return(rc)
-}
 ################################################################################
 ################################################################################
 
