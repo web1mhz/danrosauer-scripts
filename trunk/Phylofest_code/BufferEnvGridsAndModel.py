@@ -21,8 +21,9 @@ source_location = "c:\\Users\\u3579238\\GISData\\EnvironmentGrids\\AusGDMGrids\\
 extra_layers = ["twi3se_01deg","slope","geollmeanage"]
 
 use_bias_grid  = True
-bias_grid_name = "skink_samplesites" 
+bias_grid_name = "geckoes_bias_grid" 
 bias_grid_source_loc = base_dir + "species_models\\bias_files\\bias.gdb\\"
+#bias_grid_source_loc = base_dir + "species_models\\bias_files\\"
 bias_grid_temp_loc = base_dir + "species_models\\bias_files\\"
 maxent_replicates = 25
 jackknife = False
@@ -30,6 +31,8 @@ processor_threads = 9  # this sets how many processors MaxEnt can use.
 
 output_gdb_name = "maxent_models.gdb" 
 model_suffix = "_median"
+
+done_list = []
 
 for genus in genus_list:
     
@@ -262,6 +265,16 @@ for genus in genus_list:
     
             # include the bias grid in rasters to be clipped, copied
             if use_bias_grid:
+                
+                # if the bias grid is ascii, convert it to raster
+                splitname = string.rsplit(bias_grid_name,".",1)
+                if len(splitname) > 1:
+                    if splitname[1] == "asc":
+                        new_bias_grid_name = "bias_" + model_group[:4]
+                        arcpy.ASCIIToRaster_conversion(bias_grid_name,bias_grid_source_loc + new_bias_grid_name)
+                        bias_grid_name = new_bias_grid_name
+                        del(new_bias_grid_name)
+                
                 env.workspace = bias_grid_source_loc
                 env.cellSize=(bias_grid_name)
                 
@@ -273,7 +286,7 @@ for genus in genus_list:
                 #extract the required part of the grid, and write it to specified folder, with a suffix
                 maskedgrid = arcpy.sa.ExtractByMask((new_bias_grid),pointbuffer)
                 new_grid_name = bias_grid_name + "_" + model_group_sp + "_msk.asc"
-                print "\nBias grid: " + model_group, new_grid_name
+                print "\nBias grid for " + model_group + ": ", new_grid_name
                 arcpy.RasterToASCII_conversion(maskedgrid, bias_grid_temp_loc + new_grid_name)
                     
             #RUN THE MAXENT MODEL HERE
@@ -347,10 +360,14 @@ for genus in genus_list:
             
             print "Deleted " + str(del_count) + " files created by Maxent\n"
             print "\n****************************\nFinished models for " + model_group + "\n****************************\n"
-            
+            done_item = (genus + "  " + model_group)
+            done_list.append(done_item)
         else:
             print "\n****************************\nSkipping " + model_group + "\n****************************\n"
             
     print "\n****************************\nFinished all models for " + genus + " at " + str(datetime.now()) + "\n****************************\n"
 
+print "\n****************************\nFinished ALL models at " + str(datetime.now()) + "\n****************************\n"
+for item in done_list:
+    print item
 print "\n****************************\nFinished ALL models at " + str(datetime.now()) + "\n****************************\n"
