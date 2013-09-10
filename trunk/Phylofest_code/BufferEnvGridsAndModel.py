@@ -8,8 +8,17 @@ arcpy.env.overwriteOutput=True
 ### PARAMETERS ###
 os.linesep ="\n"
 
-higher_taxon = "geckoes"
-genus_list = ["Carphodactylus","Cyrtodactylus","Phyllurus","Saltuarius"]  # genus could refer to any group being handled as a set
+higher_taxon = "skinks"
+genus_list = ["Carlia","Saproscincus","Glaphyromorphus","Gnypetoscincus","Eulamprus","Lampropholis"]  # genus could refer to any group being handled as a set
+
+# a changeable list to allow for species in the dataset to be skipped
+named_species   = []
+use_list        = ""  #specify whether to:
+                            #do only the named species (use_list="do")
+                            #skip the named species (use_list="skip")
+                            #do all the species in the data and ignore the list (use_list="" or anything else);
+
+
 base_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\" + higher_taxon + "\\"
 combined_sites_folder    = "species_sites\\"
 maxent_loc = "C:\\Users\\u3579238\\Work\\Phylofest\Models\\maxent.jar"
@@ -21,10 +30,10 @@ source_location = "c:\\Users\\u3579238\\GISData\\EnvironmentGrids\\AusGDMGrids\\
 extra_layers = ["twi3se_01deg","slope","geollmeanage"]
 
 use_bias_grid  = True
-bias_grid_name = "geckoes_bias_grid" 
-bias_grid_source_loc = base_dir + "species_models\\bias_files\\bias.gdb\\"
-#bias_grid_source_loc = base_dir + "species_models\\bias_files\\"
-bias_grid_temp_loc = base_dir + "species_models\\bias_files\\"
+bias_grid_name = "skinks_bias_grid.asc" 
+#bias_grid_source_loc = base_dir + "species_models\\bias_files\\bias.gdb\\"
+bias_grid_source_loc = base_dir + "species_models\\bias_files\\"
+bias_grid_temp_loc   = base_dir + "species_models\\bias_files\\"
 maxent_replicates = 25
 jackknife = False
 processor_threads = 9  # this sets how many processors MaxEnt can use.
@@ -46,14 +55,7 @@ for genus in genus_list:
     target_location = "species_models\\clipped_grids\\" + genus + "\\" # where the clipped grids go
     
     # bioclim layers 1 to 19 are matched automatically.  Any other layers to use are listed here.
-    
-    # a changeable list to allow for species in the dataset to be skipped
-    named_species   = [""]
-    use_list        = ""  #specify whether to:
-                                #do - the named species (use_list="do")
-                                #skip - the named species (use_list="skip")
-                                #do all the species in the data and ignore the list (use_list="" or anything else);
-    
+        
     ##################
         
     print "Starting to create clipped environment grids with a " + str(buffer_dist) + " buffer."
@@ -157,7 +159,7 @@ for genus in genus_list:
                         usecol = k
                         break
             else:
-                if (usecol > 0 and row[usecol] == '1'): # if there is a use column, only proceed where 'use' = 1 and x and y are within defined limits
+                if (usecol == 0 or row[usecol] == '1'): # if there is a use column, only proceed where 'use' = 1 and x and y are within defined limits
                     try:        # if the lat or long can't be converted to a number, then skip that row, by not incremeting rownum
                         num = (float(row[5]))
                         try:
@@ -271,23 +273,24 @@ for genus in genus_list:
                 if len(splitname) > 1:
                     if splitname[1] == "asc":
                         new_bias_grid_name = "bias_" + model_group[:4]
-                        arcpy.ASCIIToRaster_conversion(bias_grid_name,bias_grid_source_loc + new_bias_grid_name)
+                        arcpy.ASCIIToRaster_conversion(bias_grid_temp_loc + bias_grid_name, data_type="INTEGER", out_raster=bias_grid_temp_loc + new_bias_grid_name)
                         bias_grid_name = new_bias_grid_name
                         del(new_bias_grid_name)
                 
                 env.workspace = bias_grid_source_loc
                 env.cellSize=(bias_grid_name)
                 
-                # combine the points used in the model, to ensure all are in the grid
-                points_layer_grid = arcpy.PointToRaster_conversion(points_layer,"model_group","points_layer_grid","MOST_FREQUENT","NONE")
-                #new_bias_grid = arcpy.gp.RasterCalculator_sa("Con(Con(IsNull("extra_samplesites_test"),0,1) + Con(IsNull("skink_samplesites"),0,1)>0,1)""","C:/Users/u3579238/Work/Phylofest/Models/skinks/species_models/bias_files/bias.gdb/skink_samplesites_fulltest")
-                new_bias_grid = arcpy.sa.Con(arcpy.sa.Con(arcpy.sa.IsNull(points_layer_grid),0,1) + arcpy.sa.Con(arcpy.sa.IsNull(bias_grid_name),0,1)>0,1)
+                ## combine the points used in the model, to ensure all are in the grid
+                #points_layer_grid = arcpy.PointToRaster_conversion(in_features=points_layer, value_field="model_group")
+                ##new_bias_grid = arcpy.gp.RasterCalculator_sa("Con(Con(IsNull("extra_samplesites_test"),0,1) + Con(IsNull("skink_samplesites"),0,1)>0,1)""","C:/Users/u3579238/Work/Phylofest/Models/skinks/species_models/bias_files/bias.gdb/skink_samplesites_fulltest")
+                #new_bias_grid = arcpy.sa.Con(arcpy.sa.Con(arcpy.sa.IsNull(points_layer_grid),0,1) + arcpy.sa.Con(arcpy.sa.IsNull(bias_grid_name),0,1)>0,1)
+                new_bias_grid = bias_grid_name
                 
                 #extract the required part of the grid, and write it to specified folder, with a suffix
                 maskedgrid = arcpy.sa.ExtractByMask((new_bias_grid),pointbuffer)
-                new_grid_name = bias_grid_name + "_" + model_group_sp + "_msk.asc"
+                masked_bias_grid_name = bias_grid_name + "_" + model_group_sp + "_msk.asc"
                 print "\nBias grid for " + model_group + ": ", new_grid_name
-                arcpy.RasterToASCII_conversion(maskedgrid, bias_grid_temp_loc + new_grid_name)
+                arcpy.RasterToASCII_conversion(maskedgrid, bias_grid_temp_loc + masked_bias_grid_name)
                     
             #RUN THE MAXENT MODEL HERE
             # create the output folder
@@ -302,7 +305,7 @@ for genus in genus_list:
                 maxent_call += " nojackknife "
             
             if use_bias_grid:
-                maxent_call += " biasfile=" + bias_grid_temp_loc + new_grid_name + " biastype=3"
+                maxent_call += " biasfile=" + bias_grid_temp_loc + masked_bias_grid_name + " biastype=3"
             
             print maxent_call  # drop this line after debug complete
             
@@ -337,8 +340,8 @@ for genus in genus_list:
                     
             # delete temporary buffered bias grid
             if use_bias_grid:
-                arcpy.Delete_management(bias_grid_temp_loc + new_grid_name)
-                print "Now deleting clipped bias grid: " + new_grid_name
+                print "Deleting clipped bias grid: " + masked_bias_grid_name
+                arcpy.Delete_management(bias_grid_temp_loc + masked_bias_grid_name)
                     
             # delete Maxent temporary files
             print "Now deleting redundant Maxent files for: " + model_group
