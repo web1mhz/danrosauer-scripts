@@ -24,14 +24,16 @@ for (tproj in proj.list) {
   cat("\nCopying layers for year", tproj,"\n")
   folder <- paste(bioclim.dir,tproj,sep="")
   
-  asc.file.1 <- paste(folder,"/slope_median.asc",sep="")
-  asc.file.2 <- paste(folder,"/elev_range.asc",sep="")
+  asc.file.1 <- paste(folder,"/slope_median_bathym.asc",sep="")
+  asc.file.2 <- paste(folder,"/elev_range_bathym.asc",sep="")
+  asc.file.old.1 <- paste(folder,"/slope_median.asc",sep="")
+  asc.file.old.2 <- paste(folder,"/elev_range.asc",sep="")
   
   if (tproj != "000") {
-    file.copy(from=paste(bioclim.dir,"000/slope_median.asc",sep=""), to=asc.file.1,overwrite=T)
-    file.copy(from=paste(bioclim.dir,"000/slope_median.asc.gz",sep=""), to=paste(asc.file.1,".gz",sep=""),overwrite=T)
-    file.copy(from=paste(bioclim.dir,"000/elev_range.asc",sep=""), to=asc.file.2,overwrite=T)
-    file.copy(from=paste(bioclim.dir,"000/elev_range.asc.gz",sep=""), to=paste(asc.file.2,".gz",sep=""),overwrite=T)
+    file.copy(from=paste(bioclim.dir,"000/slope_median_bathym.asc",sep=""), to=asc.file.1,overwrite=T)
+    file.copy(from=paste(bioclim.dir,"000/slope_median_bathym.asc.gz",sep=""), to=paste(asc.file.1,".gz",sep=""),overwrite=T)
+    file.copy(from=paste(bioclim.dir,"000/elev_range_bathym.asc",sep=""), to=asc.file.2,overwrite=T)
+    file.copy(from=paste(bioclim.dir,"000/elev_range_bathym.asc.gz",sep=""), to=paste(asc.file.2,".gz",sep=""),overwrite=T)
   }
   
   # write to mxe
@@ -41,7 +43,11 @@ for (tproj in proj.list) {
   system(maxent_call, wait=TRUE, invisible=FALSE) #run a model
   
   if (tproj != "000") {
-    file.remove(asc.file.1,asc.file.2)
+    file.remove(asc.file.1,asc.file.2, asc.file.old.1, asc.file.old.2)
+    file.remove(paste(asc.file.1,".gz",sep=""),paste(asc.file.2,".gz",sep=""))
+    mxe.old.1 <- paste(mxe.dir, tproj,'/elev_range.mxe',sep="")
+    mxe.old.2 <- paste(mxe.dir, tproj,'/slope_median.mxe',sep="")    
+    file.remove(mxe.old.1, mxe.old.2)
   }
 }
 

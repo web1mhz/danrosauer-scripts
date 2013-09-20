@@ -5,7 +5,7 @@ library(raster)
 
 ################################################################################
 #define directories
-work.dir =        'C:/Users/u3579238/GISData/Helping/Sally/Wyulda_stability/maxent.output_2_5deg_topo/'; setwd(work.dir)
+work.dir =        'C:/Users/u3579238/GISData/Helping/Sally/Wyulda_stability/maxent.output_2_5deg_topo_bathym/'; setwd(work.dir)
 mxe.dir =    'C:/Users/u3579238/Work/Refugia/Stability/OZ.climates/mxe/'
 maxent.jar = 'C:/Users/u3579238/Work/Refugia/Stability/maxent.jar'
 

@@ -15,7 +15,7 @@ occ_grid = 'C:/Users/u3579238/GISData/Helping/Sally/Wyulda_stability/wyulda_site
 species_name="Wyulda"
 threads=9
 
-output_folder_name = 'maxent.output_2_5deg_topo'
+output_folder_name = 'maxent.output_2_5deg_topo_bathym'
 mask_layer_name='wyulda_buffer_2_5deg'
 
 #define some basic data
