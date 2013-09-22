@@ -4,15 +4,15 @@ source("ClimateByTime.r")
 
 ################ set the parameters ################
 env.dir         <- "C:/Users/u3579238/Work/Refugia/Stability/OZ.climates/bioclim"
-model.dir       <- "C:/Users/u3579238/GISData/Helping/Sally/Wyulda_stability/maxent.output_less_bias_2_5deg"
-stability.dir   <- "C:/Users/u3579238/GISData/Helping/Sally/Wyulda_stability/stability_2_5deg_less_bias"
+model.dir       <- "C:/Users/u3579238/GISData/Helping/Sally/Wyulda_stability/maxent.output_2_5deg_topo_bathym"
+stability.dir   <- "C:/Users/u3579238/GISData/Helping/Sally/Wyulda_stability/stability_2_5deg_topo_bathym"
 stability.file  <- "static.sum.cost.asc"
 
-x               <- 127.82
-y               <- -14.61
-layer           <- "bioclim_16.asc.gz"
-env_value_name  <- "precipitation of wettest qtr"
-is_temp         <- FALSE
+x               <- 128.108
+y               <- -15.853
+layer           <- "bioclim_04.asc.gz"
+env_value_name  <- "temp seasonality"
+is_temp         <- TRUE
 plot_model      <- TRUE
 ################ end of parameters ################
 
