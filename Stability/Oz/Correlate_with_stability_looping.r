@@ -61,7 +61,7 @@ j <- 1
 diversities[j,"taxon"]       <- "lizard"
 diversities[j,"level"]       <- "lineage"
 diversities[j,"metric"]      <- "endemism"
-diversities[j,"grid"]        <- "rept_end_lin_25Jan_thresh_01.asc"
+diversities[j,"grid"]        <- "rept_end_lin_11Jun_thresh_01.asc"
 j <- 2
 diversities[j,1:4] <- c("lizard","lineage","richness","rept_rich_lin_25Jan_thresh_01.asc")
 j <- 3
@@ -158,7 +158,7 @@ for (i in 1:nrow(regions)) {
   }
 }
 
-write.csv(output,"Stability_end_rich_cor_with_frogs.csv")
+write.csv(output,paste(results.dir,"Stability_end_rich_cor_with_frogs_11June.csv",sep=""))
 
 # # now plot current suitability v stability (past suitability), coloured by endemism
 # library(maptools)
@@ -187,5 +187,5 @@ write.csv(output,"Stability_end_rich_cor_with_frogs.csv")
 # abline(0,1, lwd=2)
 # legend(x="topleft",legend=my.class_breaks[1:class_count+1],fill=legend_cols)
 
-rm(rf.ras, rf.crop.ras,lin_end_01.asc,lin_end_01.ras)
+rm(rf.ras, rf.asc, div.ras, div.asc, div_resample.ras, stabil_static.asc, stabil_static.ras)
 
