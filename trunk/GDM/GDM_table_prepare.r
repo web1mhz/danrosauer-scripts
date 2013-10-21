@@ -1,5 +1,5 @@
 # a script to prepare site pair, dissimilarity and environment data the GDM tables in R
-# Dan Rosauer - October 2012
+# Dan Rosauer - October 2012 
 
 library(SDMTools)
 
