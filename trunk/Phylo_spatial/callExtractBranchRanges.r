@@ -44,7 +44,7 @@
   cat("\n",length(SpecMaster[,1]),"\n")
  
   #TO SUBSET BY TAXA
-  SpecMaster <- subset(SpecMaster, Genus == "Antechinus")  
+  #SpecMaster <- subset(SpecMaster, Order == "DIPROTODONTIA")  
 
   #subset the species list to those in the spatial data, right up front
   SpecList   <- unique(Occ$SpecID)
@@ -73,8 +73,8 @@
                       output_dir,
                       parallel_cores = 1,                       
                       multi_tree = TRUE,
-                      iterations = 5,
-                      interval = 1,
+                      iterations = 100,
+                      interval = 5,
                       first_tree = 1,  # default is 1,
                       output_type,
                       feedback = "Export node ranges")
