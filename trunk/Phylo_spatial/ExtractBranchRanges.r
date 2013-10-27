@@ -169,31 +169,33 @@ PhyloSpatialMulti = function(Trees_in,
       ###########################
       ### PhyloEndemism stuff ###
       ###########################
-      CladeMemberList <- clade.members.list(phy,tips=TRUE, tip.labels=TRUE) # from CAIC, yields tip species names per branch ID
-      CountBranches <- length(phy$edge[,1])
-
+      phy4 <- phylo4(phy)
+      CountNodes <- nrow(phy4@edge)
+      
       # give names to internal branches (added to species names)
-      BranchList <- data.frame(cbind(as.numeric(phy$edge[1:CountBranches,2]),as.character(phy$tip.label[1:CountBranches])),stringsAsFactors=FALSE)
-      names(BranchList) <- c("BranchNum","BranchName")
-      internals <- which(is.na(BranchList$BranchName))
-      internal_names <- paste("br_",1:length(internals),sep="")
-      BranchList[internals,"BranchName"] <- internal_names      
-  
+      node_labels <- paste("node_", 1:nNodes(phy4), sep="")
+      nodeLabels(phy4) <- node_labels
+
       #################################################################
       cat("\nCalculating branch ranges for iteration",j,"\n")
   
-      BranchLengths         <- vector("numeric",1)
-      BranchRanges          <- vector("numeric",1)
-      BranchLengthsByRanges <- vector("numeric",1)
-
-      for (m in 1:CountBranches) {
-browser()
-        NodeID <- phy$edge[m,2]
-        BranchLengths[m] <- phy$edge.length[m]
+      nodes <- getNode(phy4,1:CountNodes)
+      #BranchIds   <- as.integer(nodes)
+      BranchDone  <- rep(FALSE,CountNodes)
+      BranchRange <- rep(0,CountNodes)
+      BranchQuads <- rep(list(0),CountNodes)
+      BranchData  <- data.frame(cbind(names(nodes), BranchDone, BranchRange, BranchQuads))
+      phy4d       <- phylo4d(phy4,all.data=BranchData,merge.data=TRUE)
+      tdata(phy4d)[,1] <- NULL
+      rm(BranchDone,BranchRange,BranchQuads,BranchData)  # cleaning up
+ 
+      for (m in 1:CountNodes) {
+# a possible time saver:
+  # check if BranchDone is true for all direct children.  
+  # if so, just aggregate BranchQuads for the two, rather than for all descendents
         BranchQuad <- NULL
-        BranchLatin <- CladeMemberList[NodeID] 
-        
-        BranchSpecID <- SpecMaster$SpecID[is.element(SpecMaster$taxon_name_tree, BranchLatin)]  #SpecIDs species descendant from this node
+        BranchLatin <- names(descendants(phy4d, m, type="tips")) 
+        BranchSpecID <- SpecMaster$SpecID[SpecMaster$taxon_name_tree %in% BranchLatin]  #SpecIDs of species descendant from this node
         BranchOcc <- Occ[Occ$SpecID %in% BranchSpecID,]  # Subset Occ list to those species
         BranchQuad <- aggregate(BranchOcc[,2:3],by=list(BranchOcc$QuadID),FUN=sum)
         BranchQuad <- BranchQuad[,-2]
@@ -205,28 +207,21 @@ browser()
         # exceeds 1.
         BranchQuad$Proportion[which(BranchQuad$Proportion>1)] <- 1
         # interestingly, without this line, I think we would be calculating AED
-        
-        BranchRanges[m] <- sum(BranchQuad$Proportion)   # Calculate union of quad occurrences
-        #BranchLengthsByRanges[m] <- phy$edge.length[m]/length(BranchQuad)
 
-        if (m==1) {
-          BranchOccAll <- BranchQuad
-          BranchNumAll <- array(m, nrow(BranchQuad))
-        } else {
-          BranchOccAll <- rbind(BranchOccAll, BranchQuad)
-          BranchNumAll <- append(BranchNumAll, array(NodeID, nrow(BranchQuad)))
-        }
+        tdata(phy4d)$BranchQuads[m] <- list(BranchQuad)
+        tdata(phy4d)$BranchRange[m] <- sum(BranchQuad$Proportion)
+        tdata(phy4d)$BranchDone[m] <- TRUE
       }
-browser()  
-      cat("\n")  
-      BranchInfoAll <- cbind(BranchList, BranchLengths,  BranchRanges)
-      BranchOccAll <-  data.frame(cbind(BranchNumAll,BranchOccAll))
-      
-      names(BranchOccAll) <- c("BranchID","QuadID","Proportion")
-      BranchInfoAll <- data.frame(BranchInfoAll)
-      names(BranchInfoAll) <- c("BranchID","BranchName","BranchLength","BranchRS")
-      summary(BranchOccAll)
-      summary(BranchInfoAll)
+
+#       cat("\n")  
+#       BranchInfoAll <- cbind(BranchList, BranchLengths,  BranchRanges)
+#       BranchOccAll <-  data.frame(cbind(BranchNumAll,BranchOccAll))
+#       
+#       names(BranchOccAll) <- c("BranchID","QuadID","Proportion")
+#       BranchInfoAll <- data.frame(BranchInfoAll)
+#       names(BranchInfoAll) <- c("BranchID","BranchName","BranchLength","BranchRS")
+#       summary(BranchOccAll)
+#       summary(BranchInfoAll)
       
       #QuadAll #item to store from each parallel loop
     }
@@ -240,11 +235,7 @@ browser()
 
     if (output_Type == "Marxan") {
       result <- MarxanInputs(write.dir = this_output_dir,
-                            branch_IDs =      as.numeric(BranchInfoAll$BranchID),
-                            branch_names =    BranchInfoAll$BranchName,
-                            branch_lengths =  BranchInfoAll$BranchLength,
-                            branch_ranges =   BranchInfoAll$BranchRS,
-                            node_occ =        BranchOccAll,
+                            tree_data = phy4d,
                             target =          0.1,
                             spf_multiplier =  3)
     }
