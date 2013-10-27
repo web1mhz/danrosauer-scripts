@@ -193,7 +193,7 @@ PhyloSpatialMulti = function(Trees_in,
 # a possible time saver:
   # check if BranchDone is true for all direct children.  
   # if so, just aggregate BranchQuads for the two, rather than for all descendents
-        BranchQuad <- NULL
+                
         BranchLatin <- names(descendants(phy4d, m, type="tips")) 
         BranchSpecID <- SpecMaster$SpecID[SpecMaster$taxon_name_tree %in% BranchLatin]  #SpecIDs of species descendant from this node
         BranchOcc <- Occ[Occ$SpecID %in% BranchSpecID,]  # Subset Occ list to those species
@@ -211,6 +211,10 @@ PhyloSpatialMulti = function(Trees_in,
         tdata(phy4d)$BranchQuads[m] <- list(BranchQuad)
         tdata(phy4d)$BranchRange[m] <- sum(BranchQuad$Proportion)
         tdata(phy4d)$BranchDone[m] <- TRUE
+        
+        if (m %% 10 == 0) {
+          cat(m,"of",CountNodes,"done\n")
+        }
       }
 
 #       cat("\n")  
