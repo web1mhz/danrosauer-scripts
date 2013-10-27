@@ -73,7 +73,7 @@
                       output_dir,
                       parallel_cores = 1,                       
                       multi_tree = TRUE,
-                      iterations = 3,
+                      iterations = 5,
                       interval = 1,
                       first_tree = 1,  # default is 1,
                       output_type,
