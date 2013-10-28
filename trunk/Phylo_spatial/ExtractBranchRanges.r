@@ -14,7 +14,6 @@ PhyloSpatialMulti = function(Trees_in,
                               output_Type = "generic",  #generic or Marxan
                               feedback = "")      #optional
 {
-
   
    ##################
    #   PARAMETERS   #
@@ -35,7 +34,7 @@ PhyloSpatialMulti = function(Trees_in,
 #     through the set of randomizations
 
   #library(doMC)  
-  library(ape); library(sp);
+  library(ape);
     
   StartTime <- date()
   cat("\n\n************************************************\n")
@@ -93,18 +92,6 @@ PhyloSpatialMulti = function(Trees_in,
   SpecList <- unique(Occ_in$SpecID)    # this way follows list and sequence as actually observed in GM360Occ
   TotalSpecCount <- length(SpecList); TotalSpecCount
   
-  cat("\n\nStarting species calculations\n")
-   ###############################
-   # Species calculations
-  
-#    # range size
-#   #QuadperSpec <- aggregate(Occ_in$SpecID, list(SpecID = Occ_in$SpecID), FUN = length)
-#   QuadperSpec <- aggregate(Occ_in$SpecID, list(SpecID = Occ_in$SpecID), FUN = length)
-#   QuadperSpec[,3] <- 1/QuadperSpec[2]
-#   names(QuadperSpec) <- c("SpecID", "Range", "RangeWeight")
-#   SpecAll_orig <- merge(SpecMaster, QuadperSpec, by.x="SpecID", by.y="SpecID", all.x=T)  
-#   rm(QuadperSpec)
- 
   # tree preparation outside of the loop
   TipsCount <- length(phy$tip.label)  
   reorder(phy, order = "cladewise")
@@ -166,9 +153,6 @@ PhyloSpatialMulti = function(Trees_in,
         }
       }
 
-      ###########################
-      ### PhyloEndemism stuff ###
-      ###########################
       phy4 <- phylo4(phy)
       CountNodes <- nrow(phy4@edge)
       
@@ -178,28 +162,37 @@ PhyloSpatialMulti = function(Trees_in,
 
       #################################################################
       cat("\nCalculating branch ranges for iteration",j,"\n")
-  
       nodes <- getNode(phy4,1:CountNodes)
-      #BranchIds   <- as.integer(nodes)
       BranchDone  <- rep(FALSE,CountNodes)
-      BranchRange <- rep(0,CountNodes)
-      BranchQuads <- rep(list(0),CountNodes)
-      BranchData  <- data.frame(cbind(names(nodes), BranchDone, BranchRange, BranchQuads))
-      phy4d       <- phylo4d(phy4,all.data=BranchData,merge.data=TRUE)
-      tdata(phy4d)[,1] <- NULL
-      rm(BranchDone,BranchRange,BranchQuads,BranchData)  # cleaning up
- 
+      BranchRange <- as.numeric(rep(0,CountNodes))
+      BranchData  <- data.frame(cbind(names(nodes), BranchDone, BranchRange),stringsAsFactors=FALSE)
+      names(BranchData)[1] <- "BranchNames"
+      rm(BranchDone,BranchRange)  # cleaning up
+      
+      tree_table <- as.data.frame(print(phy4))
+      is.tip <- tree_table$node.type == "tip"
+
       for (m in 1:CountNodes) {
 # a possible time saver:
   # check if BranchDone is true for all direct children.  
   # if so, just aggregate BranchQuads for the two, rather than for all descendents
                 
-        BranchLatin <- names(descendants(phy4d, m, type="tips")) 
-        BranchSpecID <- SpecMaster$SpecID[SpecMaster$taxon_name_tree %in% BranchLatin]  #SpecIDs of species descendant from this node
-        BranchOcc <- Occ[Occ$SpecID %in% BranchSpecID,]  # Subset Occ list to those species
-        BranchQuad <- aggregate(BranchOcc[,2:3],by=list(BranchOcc$QuadID),FUN=sum)
-        BranchQuad <- BranchQuad[,-2]
-        names(BranchQuad) <- c("QuadID","Proportion")
+        if (is.tip[m]) {
+          BranchLatin <- tree_table$label[m] 
+          BranchSpecID <- SpecMaster$SpecID[SpecMaster$taxon_name_tree == BranchLatin]  #SpecIDs of species descendant from this node
+          BranchOcc <- Occ[Occ$SpecID == BranchSpecID,]  # Subset Occ list to those species
+          BranchQuad <- BranchOcc[,-1]
+        } else {
+          BranchLatin  <- names(descendants(phy4, m, type="tips"))
+          BranchSpecID <- SpecMaster$SpecID[SpecMaster$taxon_name_tree %in% BranchLatin]  #SpecIDs of species descendant from this node
+          BranchOcc    <- Occ[Occ$SpecID %in% BranchSpecID,]  # Subset Occ list to those species
+          BranchQuad   <- aggregate(BranchOcc[,2:3],by=list(BranchOcc$QuadID),FUN=sum)
+          BranchQuad   <- BranchQuad[,-2]
+        }
+        node <- as.integer(nodes[m])
+        BranchQuad     <- cbind(rep(node,nrow(BranchQuad)),BranchQuad)
+        names(BranchQuad) <- c("BranchID","QuadID","Proportion")
+
         
         # ensure that where species occur in the same cell, the total proportion of area does not sum to > 1
         # including proportions of cells, rather than just whole cells, but without info on the location of species within each cell,
@@ -207,42 +200,43 @@ PhyloSpatialMulti = function(Trees_in,
         # exceeds 1.
         BranchQuad$Proportion[which(BranchQuad$Proportion>1)] <- 1
         # interestingly, without this line, I think we would be calculating AED
+   
+        if (m==1) {
+          BranchOccAll <- BranchQuad
+        } else {
+          BranchOccAll <- rbind(BranchOccAll, BranchQuad)
+        }
 
-        tdata(phy4d)$BranchQuads[m] <- list(BranchQuad)
-        tdata(phy4d)$BranchRange[m] <- sum(BranchQuad$Proportion)
-        tdata(phy4d)$BranchDone[m] <- TRUE
-        
-        if (m %% 10 == 0) {
-          cat(m,"of",CountNodes,"done\n")
+        BranchData$BranchRange[m] <- sum(BranchQuad$Proportion)
+        BranchData$BranchDone[m] <- TRUE
+
+        # progress output - remove once working
+        if (m %% 25 == 0) {
+          cat("\n",m,"of",CountNodes,"done\n")
+          cat("\n",BranchLatin[1],"\t",nrow(BranchQuad),"\t",nrow(BranchOccAll))
         }
       }
-
-#       cat("\n")  
-#       BranchInfoAll <- cbind(BranchList, BranchLengths,  BranchRanges)
-#       BranchOccAll <-  data.frame(cbind(BranchNumAll,BranchOccAll))
-#       
-#       names(BranchOccAll) <- c("BranchID","QuadID","Proportion")
-#       BranchInfoAll <- data.frame(BranchInfoAll)
-#       names(BranchInfoAll) <- c("BranchID","BranchName","BranchLength","BranchRS")
-#       summary(BranchOccAll)
-#       summary(BranchInfoAll)
+       
+      #name the output folder
+      if (run_count > 1) {
+        this_output_dir <- paste(base_dir,output_dir,"_",j,sep="")
+      } else {
+        this_output_dir <- paste(base_dir,output_dir,sep="")
+      }
+      
+      if (output_Type == "Marxan") {
+        result <- MarxanInputs(write.dir = this_output_dir,
+                               tree = phy4,
+                               branch_data = BranchData,
+                               node_occ = BranchOccAll,
+                               target =          0.1,
+                               spf_multiplier =  3)
+      }
       
       #QuadAll #item to store from each parallel loop
+      gc()  # garbage collect from memory
     }
   
-    #name the output folder
-    if (run_count > 1) {
-      this_output_dir <- paste(base_dir,output_dir,"_",j,sep="")
-    } else {
-      this_output_dir <- paste(base_dir,output_dir,sep="")
-    }
-
-    if (output_Type == "Marxan") {
-      result <- MarxanInputs(write.dir = this_output_dir,
-                            tree_data = phy4d,
-                            target =          0.1,
-                            spf_multiplier =  3)
-    }
 # 
 #     cat("\nAbout to write results for iterations", block_min,"to",block_max,"\n")
 #     cat("\nIterations run: ", 1 + block_max - block_min," Available: ",length(unique(quad_scores[,1])),"\n")    

@@ -44,7 +44,7 @@
   cat("\n",length(SpecMaster[,1]),"\n")
  
   #TO SUBSET BY TAXA
-  #SpecMaster <- subset(SpecMaster, Order == "DIPROTODONTIA")  
+  SpecMaster <- subset(SpecMaster, Order == "DIPROTODONTIA")  
 
   #subset the species list to those in the spatial data, right up front
   SpecList   <- unique(Occ$SpecID)
@@ -73,8 +73,8 @@
                       output_dir,
                       parallel_cores = 1,                       
                       multi_tree = TRUE,
-                      iterations = 100,
-                      interval = 5,
+                      iterations = 10,
+                      interval = 1,
                       first_tree = 1,  # default is 1,
                       output_type,
                       feedback = "Export node ranges")
@@ -94,7 +94,7 @@
 #     if (exists("parameters2")) {
 #       results <- do.call('PhyloSpatialMulti_sp_null_HPC', parameters2)  
 #     }      
-      
+Rprof("ExtractBranchesProf.out",line.profiling=TRUE)    
     # run the PhyloSpatial function - observed
     results <- do.call('PhyloSpatialMulti', parameters1) 
     
