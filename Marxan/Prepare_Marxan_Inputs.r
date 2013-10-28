@@ -5,38 +5,26 @@ library(gdata)
 
 MarxanInputs <- function(
                   write.dir,
-                  tree_data,
+                  tree,
+                  branch_data,
+                  node_occ,
                   target,
                   spf_multiplier) {
 
-  cat("\nGenerating marxan outputs for",write.dir,"\n\n")
+  cat("\n\nGenerating marxan outputs for",write.dir,"\n\n")
   
-  cons.feature.count <- nrow(tree_data@edge)
-  branch_data <- tdata(tree_data)
+  cons.feature.count <- nrow(tree@edge)
   branch_ranges   <- as.numeric(branch_data$BranchRange)
-  branch_names    <- as.character(labels(tree_data))
-  branch_IDs      <- as.numeric(getNode(tree_data))
-  branch_targets  <- (branch_ranges * target)  # for targets other than a flat %, set target via a function
-  branch_info     <- as.data.frame(print(as(tree_data,"phylo4")))
+  branch_names    <- as.character(labels(tree))
+  branch_IDs      <- as.numeric(getNode(tree))
+  branch_targets  <- round(branch_ranges * target,4)  # for targets other than a flat %, set target via a function
+  branch_info     <- as.data.frame(print(tree))
   branch_lengths  <- branch_info$edge.length
   branch_lengths[which(is.na(branch_lengths))] <- 0
-  spec <- data.frame(cbind(branch_IDs,branch_targets,branch_lengths * spf_multiplier,branch_names))
+  spec <- data.frame(cbind(branch_IDs,branch_targets,round(branch_lengths * spf_multiplier,4),branch_names))
   names(spec) <- c("species_id","target","spf","name")
   spec <- spec[-which(spec$spf==0),]
 
-  node_occ_list <- tdata(tree_data)$BranchQuads
-  node_occ <- data.frame(species_id = 0, QuadID = 0, Proportion = 0)
-  
-  #extract the spatial data for each node
-  for (i in 1:length(node_occ_list)) {
-    this_node_occ <- as.data.frame(node_occ_list[i])
-    species_id <- rep(i,nrow(this_node_occ))
-    this_node_occ <- cbind(species_id,this_node_occ)
-    node_occ <- rbind(node_occ, this_node_occ)
-  }
-
-  node_occ <- node_occ[-1,]
-  
   pu_list  <- data.frame(sort(unique(node_occ[,2])))
   pu.count <- length(pu_list[,1])
 
@@ -44,8 +32,8 @@ MarxanInputs <- function(
   names(pu_list) <- c("pu_id","pu_name")
 
   pu <- data.frame(pu_list$pu_id)
-  
-  node_by_cell_SpID <- merge(spec, node_occ, by="species_id")
+  names(pu) <- "id"
+  node_by_cell_SpID <- merge(spec, node_occ, by.x="species_id", by.y="BranchID")
   puvspr2 <- data.frame(node_by_cell_SpID$species_id,node_by_cell_SpID$QuadID,node_by_cell_SpID$Proportion)
   names(puvspr2) <- c("species","pu_name","amount")  # this data frame has the species number, but the PU name
   rm(node_by_cell_SpID)
