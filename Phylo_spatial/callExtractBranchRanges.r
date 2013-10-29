@@ -1,4 +1,4 @@
-# call Phylo Spatial function
+#! /usr/local/lib64/R/bin/Rscript --vanilla
 
   rm(list=ls())
 
@@ -7,9 +7,9 @@
   cat("Starting callExtractBranchRanges at: ", StartTime)
   cat  ("\n************************************************\n")
   
-  source("C:/Users/u3579238/Work/Software/danrosauer-scripts/Phylo_spatial/ExtractBranchRanges.r")
-  source("C:/Users/u3579238/Work/Software/danrosauer-scripts/Marxan/Prepare_Marxan_Inputs.r")
-  setwd("C:/Users/u3579238/FromYale/fromTuraco/PhyloSpatial/MammalData")
+  source("/home2/danr/scripts/phylo_spatial/ExtractBranchRanges.r")
+  source("/home2/danr/scripts/phylo_spatial/Prepare_Marxan_Inputs.r")
+  setwd("/home2/danr/mammal_data")
 
   library(ape)
   
@@ -19,9 +19,9 @@
   Occ_filename            <- "Occ360x114Mammals_2010_revised_Nov11.csv"
   ClimLand_filename       <- "ClimLand_360x114_islands.csv"
   phylogeny_filename      <- "FritzTree.rs200k.100trees.tre"
-  #phylogeny_filename      <- "FritzTree.rs200k.100trees_1st_tree.tre"  
+  #phylogeny_filename     <- "FritzTree.rs200k.100trees_1st_tree.tre"  
   SpecMaster_filename     <- "Mammals 2010 Range Tree Lookup Nov2011.csv"
-  base_dir                <- "C:/Users/u3579238/Work/Software/Marxan/Marxan_runs/batch_test/" # the output directory sits within this
+  base_dir                <- "/home2/danr/marxan_runs/mammals/batch_test/" # the output directory sits within this
   output_dir              <- "marxan_batch"
   output_type             <- "Marxan"
   
@@ -44,7 +44,7 @@
   cat("\n",length(SpecMaster[,1]),"\n")
  
   #TO SUBSET BY TAXA
-  SpecMaster <- subset(SpecMaster, Order == "DIPROTODONTIA")  
+  #SpecMaster <- subset(SpecMaster, Order == "DIPROTODONTIA")  
 
   #subset the species list to those in the spatial data, right up front
   SpecList   <- unique(Occ$SpecID)
@@ -73,10 +73,11 @@
                       output_dir,
                       parallel_cores = 1,                       
                       multi_tree = TRUE,
-                      iterations = 10,
+                      iterations = 20,
                       interval = 1,
                       first_tree = 1,  # default is 1,
                       output_type,
+			 first_dir_num = 1,
                       feedback = "Export node ranges")
 #                     
 #   if (TRUE) {
@@ -94,9 +95,8 @@
 #     if (exists("parameters2")) {
 #       results <- do.call('PhyloSpatialMulti_sp_null_HPC', parameters2)  
 #     }      
-Rprof("ExtractBranchesProf.out",line.profiling=TRUE)    
     # run the PhyloSpatial function - observed
-    results <- do.call('PhyloSpatialMulti', parameters1) 
+    results <- do.call('ExtractBranchRanges', parameters1) 
     
     cat ("\n\n Started at:",StartTime,"\n")
 #     cat ("\n\n Finished at:",date(),"\n")       

@@ -1,6 +1,6 @@
 library(phylobase)
 
-PhyloSpatialMulti = function(Trees_in,
+ExtractBranchRanges = function(Trees_in,
                               QuadInfo_in, 
                               SpecMaster_in, 
                               Occ_in, 
@@ -12,8 +12,10 @@ PhyloSpatialMulti = function(Trees_in,
                               interval = 1,
                               first_tree = 1,
                               output_Type = "generic",  #generic or Marxan
+				  first_dir_num = 1,
                               feedback = "")      #optional
 {
+
   
    ##################
    #   PARAMETERS   #
@@ -180,7 +182,7 @@ PhyloSpatialMulti = function(Trees_in,
         if (is.tip[m]) {
           BranchLatin <- tree_table$label[m] 
           BranchSpecID <- SpecMaster$SpecID[SpecMaster$taxon_name_tree == BranchLatin]  #SpecIDs of species descendant from this node
-          BranchOcc <- Occ[Occ$SpecID == BranchSpecID,]  # Subset Occ list to those species
+          BranchOcc <- Occ[Occ$SpecID %in% BranchSpecID,]  # Subset Occ list to those species
           BranchQuad <- BranchOcc[,-1]
         } else {
           BranchLatin  <- names(descendants(phy4, m, type="tips"))
@@ -212,14 +214,15 @@ PhyloSpatialMulti = function(Trees_in,
 
         # progress output - remove once working
         if (m %% 25 == 0) {
-          cat("\n",m,"of",CountNodes,"done\n")
-          cat("\n",BranchLatin[1],"\t",nrow(BranchQuad),"\t",nrow(BranchOccAll))
+          cat("\n",m,"of",CountNodes,"done")
+          cat("\n",tree_table$label[m],"\t",nrow(BranchQuad),"\t",nrow(BranchOccAll),"\t",( j + first_dir_num - 1),"\n")
         }
       }
        
       #name the output folder
       if (run_count > 1) {
-        this_output_dir <- paste(base_dir,output_dir,"_",j,sep="")
+	 directory_number <- j + first_dir_num - 1  # allows for starting with a later number
+        this_output_dir <- paste(base_dir,output_dir,"_",directory_number ,sep="")
       } else {
         this_output_dir <- paste(base_dir,output_dir,sep="")
       }
@@ -234,7 +237,9 @@ PhyloSpatialMulti = function(Trees_in,
       }
       
       #QuadAll #item to store from each parallel loop
-      gc()  # garbage collect from memory
+
+      try (rm(BranchData, BranchOccAll))
+      gc() # garbage collect from memory
     }
   
 # 
@@ -250,4 +255,3 @@ PhyloSpatialMulti = function(Trees_in,
   }
 
 }
-
