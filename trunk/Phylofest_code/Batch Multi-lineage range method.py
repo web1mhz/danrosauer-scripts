@@ -1,6 +1,6 @@
 # Dan Rosauer September 2012
 
-##STEPS TO ENCODE
+##STEPS
 ## 1. import the points for the whole species
 ##
 ## 2. to bound the whole analysis, use euc distance to create a grid to define a boundary at a set distance
@@ -26,7 +26,8 @@
 
 ## All of the above could be nested within a loop that iterates through species.
 
-import arcpy, sys, os, math, numpy, csv, os, string
+import arcpy
+import sys, os, math, numpy, csv, os, string
 from arcpy import env
 from arcpy.sa import *
 arcpy.CheckOutExtension("Spatial")
@@ -37,52 +38,52 @@ import LineageFunctions
 
 ### PARAMETERS ###
 higher_taxon = "geckoes"
-base_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\" + higher_taxon + "\\"
-
+#genus_list = ["Carphodactylus","Cyrtodactylus","Phyllurus","Saltuarius"]  # full gecko genus list
 genus_list = ["Phyllurus"]
 
+base_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\" + higher_taxon + "\\"
+output_gdb_name = "results.gdb"
+scratch_workspace = "C:\\Users\\u3579238\\Work\\Phylofest\\Models\\"  #scratch workspace is used by ArcGIS for temporary files during analysis
+scratch_gdb = "ESRI_scratch.gdb"
+buffer_dist = 2.5      # the buffer distance in degrees
+additional_buffer = 0  ## how much (as a proportion) the output grids should extend beyond the buffered points
+#grid_resolution = 1.0/120.0
+grid_resolution = 0.01
+Australia_extent = arcpy.Extent(112.9,-43.75,153.64,-9)
+Lineage_field_name = "Lineage"
+Distance_method = "model-cost"      ## determines whether distance is calculated as euclidean or model-weighted cost distance
+                                    ## so far, can be "euclidian" or "model-cost"
+Weight_function = "inverse_square"  ## determines whether lineage weight is calculated as 1/distance or 1/(distance^2)
+                                    ## so far, can be "inverse" or "inverse_square"
+Min_dist_value = 0.0001             ## sets a floor for costthis prevents a division by 0 error.  In future change minimum value to grid_resolution / 2 (distance to edge of cell)
+                                    ##   but keep current value for consistency in this study
+Min_weight_threshold = 0.02         ## weights below this for any layer are set to 0.  If the value here is 0, then no threshold is applied
+Scale_to = "model"                  ## determines whether lineage weights sum to the model suitability or to 1
+                                    ## can be "model" or "one"
+model_edited_suffix = "_edited"     ## this is to check if there is a version of the model cliiped to reduce overprediction
+
+# a changeable list to allow for species in the dataset to be skipped
+named_species   = []
+use_list        = ""  #specify whether to:
+                        #do - the named species (use_list="do")
+                        #skip - the named species (use_list="skip")
+                        #do all the species in the data and ignore the list (use_list="" or anything else);
+Lin_exclude_list = ["_","lin_","CZ","lin_CZ","0"]
+#Lin_exclude_list = Lin_exclude_list + ["e"]  # this is a temporary workaround for one lineage of Saproscincus mustelinus that crashes the script
+
 for genus in genus_list:
-    print "\n" + genus + "\n"
+    print "\nGenus: " + genus + "\n"
 
     sequence_site_filename = base_dir + "sequence_sites\\" + genus + "_lin_loc.csv"
     target_location = base_dir + "lineage_models\\" + genus + "\\"  # where the lineage model grids and working data
-    
-    output_gdb_name = "results.gdb"
-    scratch_workspace = "C:\\Users\\u3579238\\Work\\Phylofest\\Models\\"  #scratch workspace is used by ArcGIS for temporary files during analysis
-    scratch_gdb = "ESRI_scratch.gdb"
     maxent_model_base = base_dir + "species_models\\maxent\\" + genus + "\\maxent_models.gdb"
-    buffer_dist = 2.5                                                               # the buffer distance in degrees
-    additional_buffer = 0  ## how much (as a proportion) the output grids should extend beyond the buffered points
-    #grid_resolution = 1.0/120.0
-    grid_resolution = 0.01
-    Australia_extent = arcpy.Extent(112.9,-43.75,153.64,-9)
-    Lineage_field_name = "Lineage"
-    Distance_method = "model-cost"      ## determines whether distance is calculated as euclidean or model-weighted cost distance
-                                        ## so far, can be "euclidian" or "model-cost"
-    Weight_function = "inverse_square"  ## determines whether lineage weight is calculated as 1/distance or 1/(distance^2)
-                                        ## so far, can be "inverse" or "inverse_square"
-    Min_weight_threshold = 0.02         ## weights below this for any layer are set to 0.  If the value here is 0, then no threshold is applied
-    Scale_to = "model"                  ## determines whether lineage weights sum to the model suitability or to 1
-                                        ## can be "model" or "one"
-    model_edited_suffix = "_edited"     ## this is to check if there is a version of the model cliiped to reduce overprediction
-    
-    
-    # a changeable list to allow for species in the dataset to be skipped
-    named_species   = [""]
-    use_list        = ""  #specify whether to:
-                                #do - the named species (use_list="do")
-                                #skip - the named species (use_list="skip")
-                                #do all the species in the data and ignore the list (use_list="" or anything else);
-    Lin_exclude_list = ["_","lin_","CZ","lin_CZ","0"]
-    #Lin_exclude_list = Lin_exclude_list + ["e"]  # this is a temporary workaround for one lineage of Saproscincus mustelinus that crashes the script
-     
+        
     # create the scratch geodatabase if needed (to store temporary layers during analysis)
     try:
         arcpy.CreateFileGDB_management(scratch_workspace, scratch_gdb)
     except:
         print "File geodatabase "+target_location+ " " + output_gdb_name + " already exists or creation failed"
     
-                                       
     # create the output geodatabase if needed
     if not os.path.exists(target_location):
         os.makedirs(target_location)
@@ -122,7 +123,7 @@ for genus in genus_list:
                     if str.lower(header[k]) == "use":
                         UseCol = k
                         break
-                
+
             else:
                 if (UseCol == -1 or row[UseCol] == '1'):
                     try:        # if the lat or long can't be converted to a number, then skip that row
@@ -203,12 +204,11 @@ for genus in genus_list:
         
             # start a list of layers to delete at the end
             layers_to_delete = []
-        
-            ## Buffer the full set of sequenced locations   STEPS 1 & 2
             
-            print "Buffering all points for " + group + "\n"
-           #point_buffer = arcpy.sa.EucDistance(points_layer,buffer_dist,grid_resolution)
-            point_buffer = arcpy.sa.EucDistance(points_fc,buffer_dist,grid_resolution)        
+            #THE POINT BUFFER GENERATED IN THE FOLLOWING LINES SEEMS REDUNDANT.  CHECK IT ALL WORKS WITHOUT!!
+            ### Buffer the full set of sequenced locations   STEPS 1 & 2
+            #print "Buffering all points for " + group + "\n"
+            #point_buffer = arcpy.sa.EucDistance(points_fc,buffer_dist,grid_resolution)        
     
             ## get a list of the lineages in this group
             lineage_list=[]
@@ -218,7 +218,6 @@ for genus in genus_list:
                     if row[2] == group and "," not in row[3] and row[3] not in Lin_exclude_list:  # exclude particular lineage names and those with dodgy punctuation (fix in data later)
                         lineage_list.append(row[3])
                         print "   ", row[3]
-                    
             
             maxent_extent = maxent_raster.extent
             
@@ -249,6 +248,9 @@ for genus in genus_list:
             print "\nLooping through the lineages in " + group + " to generate weight grids\n"
             count = 0
             
+            if Distance_method == "model-cost":
+                model_cost = -1 * arcpy.sa.Ln(maxent_model)
+            
             for lineage in lineage_list:
                 count += 1
             
@@ -267,7 +269,6 @@ for genus in genus_list:
                 if Distance_method == "model-cost":                                   ## STEP 5b
                     ## calculates the least cost distance to the nearest lineage point
                     ## the result is written directly to lineage_dist_gridname
-                    model_cost = -1 * arcpy.sa.Ln(maxent_model)  # this operation can be done just once per model group, outside the current loop
                     lin_dist = arcpy.sa.PathDistance("lineage_points",model_cost)
                     # change zero values to a very small non-zero value, to avoid nodata in division
                     lin_dist = arcpy.sa.Con(lin_dist==0,0.0001,lin_dist)
@@ -280,16 +281,13 @@ for genus in genus_list:
                 else:
                     lin_dist = arcpy.sa.EucDistance(lin_lyr,"",grid_resolution)     ## STEP 5a
                     # change zero values to a very small non-zero value, to avoid nodata in division
-                    lin_dist = arcpy.sa.Con(lin_dist==0,0.0001,lin_dist)
+                    lin_dist = arcpy.sa.Con(lin_dist > Min_dist_value,Min_dist_value,lin_dist)
                     
                     if Weight_function == "inverse_square":                 ## STEP 6b
                         lin_weight = 1/(lin_dist ** 2)
                     else:
                         lin_weight = 1/lin_dist                             ## STEP 6a       this comes 2nd, as it is the default, for any other values of Weight_function            
-            
-    
-                
-                
+               
                 # reset points definition to whole Model Group
                 arcpy.SelectLayerByAttribute_management(lin_lyr, "CLEAR_SELECTION")
             

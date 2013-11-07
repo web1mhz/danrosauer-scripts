@@ -7,14 +7,12 @@ rm(list=ls())
 
 ########## Parameters ##########
 #inputs
-#taxon_name        <- "Carlia"
-higher_taxon = "skinks"
+higher_taxon = "geckoes"
 base.dir = paste("C:/Users/u3579238/work/Phylofest/Models/",higher_taxon,"/",sep="")
-samples.filename = paste("species_sites/AllSkinks_ALA.csv",sep="")
 
 #set up sample locations
 samples.dir = c(paste(base.dir,"sequence_sites/",sep=""),paste(base.dir,"species_sites/",sep=""))
-samples.filter = c("loc.csv","ALA.csv")
+samples.filter = c("loc.csv","ALA.csv","All_frogs_Dec11.csv")
 samples.lat.col = c(6,2)
 samples.long.col= c(7,3)
 sample_locations <- data.frame(cbind(samples.dir,samples.filter))
@@ -32,7 +30,9 @@ setwd(work.dir)
 template.ras <- raster(env.filename)
 bias.ras <- raster(extent(template.ras), nrows=nrow(template.ras), ncols=ncol(template.ras))
 
-#read in additional sample sites
+#read in sample sites
+first=TRUE
+
 for (i in 1:nrow(sample_locations)) {
   dir = as.character(sample_locations$dir[i])
   filter = as.character(sample_locations$filter[i])
@@ -40,7 +40,6 @@ for (i in 1:nrow(sample_locations)) {
   long.col = samples.long.col[i]
   files <- list.files(dir,pattern=filter,full.name=TRUE)    
 
-  first=TRUE
   for (file in files) {
     extra_sites <- read.csv(file)
     extra_sites <- extra_sites[,c(long.col,lat.col)]
@@ -57,8 +56,9 @@ for (i in 1:nrow(sample_locations)) {
   rm(extra_sites)
 }
 
-#create a shifted set of sample sites so that where a site lies exactly on the cell border, both adjoining cells are included
-#rasterize allocates points on the border to the left or lower (or lower-left) cell, hence shifting up and right
+#create a shifted set of sample sites so that where a site lies exactly on the 
+#cell border, both adjoining cells are included.  Rasterize allocates points on
+#the border to the left or lower (or lower-left) cell, hence shifting up and right
 shift <- resolution/50 # an arbitrary small shift to put points on the margin into the next cell
 shifted_x <- sample_sites[1] + shift
 shifted_y <- sample_sites[2] + shift
