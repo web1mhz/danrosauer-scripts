@@ -1,6 +1,6 @@
 # Dan Rosauer November 2012
 
-# a quickly edited version of the lineage range method, to read in the species and lineage distributions and export a .asc for each species.
+# reads in the lineage distributions from an ESRI file GDB and exports an .asc for each lineage.
 
 import arcpy, sys, os, string
 from arcpy import env
@@ -12,17 +12,17 @@ sys.path.append("C:\\Users\\u3579238\Work\Phylofest\\")
 import LineageFunctions
 
 ### PARAMETERS ###
-#genus_list = ["Carlia","Eulamprus","Glaphyromorphus","Gnypetoscincus","Saproscincus","Lampropholis"]
-genus_list = ["Carphodactylus", "Phyllurus", "Saltuarius", "Cyrtodactylus"]
-
 higher_taxon = "geckoes"
-base_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\" + higher_taxon + "\\"
+#genus_list = ["Carlia","Eulamprus","Glaphyromorphus","Gnypetoscincus","Saproscincus","Lampropholis"]
+genus_list = ["Phyllurus"]
 
+base_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\" + higher_taxon + "\\"
+target_location = "C:\\Users\\u3579238\\Work\\Phylofest\\Models\\combined\\lineage_models\\"
+    
 for genus in genus_list:
     print "\n" + genus + "\n"
 
     lineage_model_dir = base_dir + "lineage_models\\" + genus + "\\results.gdb"
-    target_location = "C:\\Users\\u3579238\\Work\\Phylofest\\Models\\combined\\lineage_models\\"
 
     arcpy.env.workspace = lineage_model_dir
     arcpy.env.overwriteOutput=True
