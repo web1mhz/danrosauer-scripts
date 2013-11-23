@@ -8,16 +8,16 @@ import arcpy.sa
 arcpy.CheckOutExtension("Spatial")
 arcpy.env.overwriteOutput=True
 
-sys.path.append("C:\\Users\\u3579238\Work\Phylofest\\")
+sys.path.append("C:\\Users\\Dan\Work\AMT\\")
 import LineageFunctions
 
 ### PARAMETERS ###
 higher_taxon = "geckoes"
 #genus_list = ["Carlia","Eulamprus","Glaphyromorphus","Gnypetoscincus","Saproscincus","Lampropholis"]
-genus_list = ["Phyllurus"]
+genus_list = ["Gehyra"]
 
-base_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\" + higher_taxon + "\\"
-target_location = "C:\\Users\\u3579238\\Work\\Phylofest\\Models\\combined\\lineage_models\\"
+base_dir = "C:\\Users\\Dan\\work\\AMT\\Models\\"
+target_location = "C:\\Users\\Dan\\Work\\AMT\\Models\\lineage_models\\asc\\"
     
 for genus in genus_list:
     print "\n" + genus + "\n"
