@@ -31,8 +31,14 @@ calc_PE <- function(tree, sites_x_tips,presence=c("presence","abundance","probab
   # change to a phylobase phylo4 object
   if (class(tree) == "phylo") {tree <- phylo4(tree)}
   
-  sites_x_branches <- sites_x_tips
-  
+  sites_x_branches <- data.frame(cbind(rep(0,nrow(sites_x_tips))))
+
+  for (i in 1:nTips(tree)) {
+    sites_x_branches[,i] <- sites_x_tips[,which(labels(tree)[i]==names(sites_x_tips))]
+    names( sites_x_branches)[i] <- labels(tree)[i]
+    cat(i,dim(sites_x_branches),"\n")
+  }
+  rm(sites_x_tips); gc()
   branch_labels <- labels(tree)
   branchcount <- length(labels(tree))
 
@@ -49,8 +55,10 @@ calc_PE <- function(tree, sites_x_tips,presence=c("presence","abundance","probab
     }
     sites_x_branches[,i] <- branch_col
     names(sites_x_branches[i]) <- branch_labels[i]
+    cat(i,branch_labels[i],length(desc),"\n")
+    gc(verbose=F)
   }
-browser()    
+  
   #scale columns (branches) to sum to 1
   sites_x_branches <- apply(sites_x_branches,MARGIN=2,FUN=scale.to,1)
   
