@@ -27,7 +27,7 @@ image.grid = function(tasc,tfile,zlim=NULL,cols=NULL) {
 ################################################################################
 
 #TEMP
-#row.limit=3000000
+row.limit=100000
 #TEMP
 
 #define directories
@@ -35,7 +35,7 @@ base.dir   =    'C:/Users/Dan/Work/AMT/Models/'
 input.dir       <- 'lineage_models/asc_clipped'
 output.dir      <- base.dir
 file_suffix     <- '.asc'
-template_grid   <- 'C:/Users/Dan/Work/AMT/Models/lineage_models/asc_clipped/lin_model_gehyra_robusta_rob2.asc'
+template_grid   <- 'C:/Users/Dan/Work/AMT/Models/AMT_template.asc'
 group_lin_list  <- 'group_lineage_list.csv'
 
 #tree details  - this works for one genus at a time
@@ -43,8 +43,8 @@ tree.file     = 'trees/Gehyra uniq lineages 141113 final.tre'
 outgroup      = 'Heteronotia'
 preface       = 'lin_model_'
 
-richness_output = "reptfrog_rich_lin_25Sep_thresh_01"
-endemism_output = "reptfrog_end_lin_25Sep_thresh_01"  #"frog_end_sp_thr0.5"
+#richness_output = "reptfrog_rich_lin_25Sep_thresh_01"
+endemism_output = "gehyra_PE"  #"frog_end_sp_thr0.5"
 PE_output <- "gehyra_PE"
 threshold = 0.01  # this is not a species level threshold, but one used for each lineage model
 
@@ -60,7 +60,7 @@ model_rows=nrow(template.asc)
 model_cols=ncol(template.asc)
 
 # the original version, excluding NA cells
-pos = as.data.frame(which(is.finite(template.asc),arr.ind=TRUE)) #get all points that have data
+pos <- as.data.frame(which(is.finite(template.asc),arr.ind=TRUE)) #get all points that have data
 
 i <- 0
 
@@ -81,6 +81,11 @@ for (tfile in files) {
   }
 }
 
+rowsums <- apply(pos[,3:ncol(pos)],1,sum,na.rm=T)
+pos <- pos[which(rowsums>0),]
+rm(rowsums)
+gc()
+
 setwd(base.dir)
 group_lin_list <-read.csv(group_lin_list)
 
@@ -92,11 +97,14 @@ tree <- phylo4(tree)
 # ensure that the tree tips match the model names
 model.names <- names(pos[3:(i+2)])  # names of all columns except the 1st two which are row, col
 #model.names <- tolower(gsub(preface,"",model.names))
+model.groups <- vector("character",1)
 
 for (i in 1:nTips(tree)) {
   row <- group_lin_list[group_lin_list$lineage==labels(tree)[i],]
   labels(tree)[i] <- tolower(paste(row$ModelGroup,row$lineage,sep="_"))
+  model.groups[i] <- as.character(row$ModelGroup)
 }
+
 tree.names  <- as.character(labels(tree)[1:nTips(tree)])
 matched.names <- intersect(model.names,tree.names)
 cat("Not in tree names:",setdiff(model.names,tree.names))
@@ -104,7 +112,8 @@ cat("Not in model names:",setdiff(tree.names,model.names))
 
 gc()
 #result <- calc_PE(tree,pos[1:row.limit,which(names(pos) %in% tree.names)],"probability")
-result <- calc_PE(tree,pos[,which(names(pos) %in% tree.names)],"probability")
+#result <- calc_PE{(tree,pos[,which(names(pos) %in% tree.names)],"probability")
+result <- calc_PE_mymodels(tree,pos[1:row.limit,which(names(pos) %in% tree.names)],model.groups)
 gc()
 
 # create a data frame of branches with
@@ -144,10 +153,14 @@ gc()
 # pos$we = apply(pos_end[3:cols],1,'sum')
 # rm(pos_end)
 
-pos_output <- cbind(pos[,2:1],result$PE)
+pos_output <- cbind(pos[1:row.limit,2:1],result$PE)
 #pos_output <- pos[,c(2,1,cols+1,cols+2)]
 
 dataframe2asc(pos_output,PE_output,output.dir)
+
+result.ras <- raster(paste(output.dir,PE_output,".asc",sep=""))
+windows(9,9)
+plot(result.ras)
 
 #write.asc(.asc, paste(output.dir,'sp_richness.asc',sep='') #write out the ascii grid file
 image.grid("PE_output.asc",paste(output.dir,'PE_gehyra.png',sep=''),zlim=c(0,1),cols=model_cols) #plot the image after logging the actual data
