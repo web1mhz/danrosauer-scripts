@@ -2,7 +2,8 @@
 ## it requires all the model grids to have the same extent
 rm(list=ls())
 
-library(SDMTools, Raster)
+library(SDMTools)
+library(raster)
 library(phylobase)
 source("C:/Users/Dan/Work/Software/Phylofest_code/phylogenetic endemism.r")
 
@@ -27,7 +28,7 @@ image.grid = function(tasc,tfile,zlim=NULL,cols=NULL) {
 ################################################################################
 
 #TEMP
-row.limit=100000
+#row.limit=100000
 #TEMP
 
 #define directories
@@ -45,7 +46,7 @@ preface       = 'lin_model_'
 
 #richness_output = "reptfrog_rich_lin_25Sep_thresh_01"
 endemism_output = "gehyra_PE"  #"frog_end_sp_thr0.5"
-PE_output <- "gehyra_PE"
+output_prefix <- "gehyra_PE"
 threshold = 0.01  # this is not a species level threshold, but one used for each lineage model
 
 ####  end of parameters
@@ -81,9 +82,12 @@ for (tfile in files) {
   }
 }
 
+cat("\nRemoving unoccupied cells\n")
+cat("Before:",nrow(pos),"\n")
 rowsums <- apply(pos[,3:ncol(pos)],1,sum,na.rm=T)
 pos <- pos[which(rowsums>0),]
 rm(rowsums)
+cat("After:",nrow(pos),"\n")
 gc()
 
 setwd(base.dir)
@@ -113,7 +117,7 @@ cat("Not in model names:",setdiff(tree.names,model.names))
 gc()
 #result <- calc_PE(tree,pos[1:row.limit,which(names(pos) %in% tree.names)],"probability")
 #result <- calc_PE{(tree,pos[,which(names(pos) %in% tree.names)],"probability")
-result <- calc_PE_mymodels(tree,pos[1:row.limit,which(names(pos) %in% tree.names)],model.groups)
+result <- calc_PE_mymodels(tree,pos[,which(names(pos) %in% tree.names)],model.groups)
 gc()
 
 # create a data frame of branches with
@@ -153,12 +157,15 @@ gc()
 # pos$we = apply(pos_end[3:cols],1,'sum')
 # rm(pos_end)
 
-pos_output <- cbind(pos[1:row.limit,2:1],result$PE)
+pos_output <- cbind(pos[,2:1],result)
 #pos_output <- pos[,c(2,1,cols+1,cols+2)]
 
-dataframe2asc(pos_output,PE_output,output.dir)
+dataframe2asc(pos_output,paste(output_prefix,"PE.asc",sep=""),output.dir)
+dataframe2asc(pos_output,paste(output_prefix,"PD.asc",sep=""),output.dir)
+dataframe2asc(pos_output,paste(output_prefix,"WE.asc",sep=""),output.dir)
+dataframe2asc(pos_output,paste(output_prefix,"SE.asc",sep=""),output.dir)
 
-result.ras <- raster(paste(output.dir,PE_output,".asc",sep=""))
+result.ras <- raster(paste(output.dir,output_prefix,".asc",sep=""))
 windows(9,9)
 plot(result.ras)
 
