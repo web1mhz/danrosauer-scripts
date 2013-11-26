@@ -40,7 +40,7 @@ parent.prob.groups <- function(probabilities,model.groups) {
 
 scale.to <- function(vec,vec.sum) {
   #mat is a vector
-  #this function rescales each the vector values to sum to 'sum'
+  #this function rescales each the vector values to sum to 'vec.sum'
   vec.tot <- sum(vec,na.rm=TRUE)
   if (vec.tot > 0) {
     vec.out <- vec.sum*vec/vec.tot
@@ -86,11 +86,11 @@ calc_PE <- function(tree, sites_x_tips,presence=c("presence","abundance","probab
     cat(i,branch.labels[i],length(desc),"\n")
     gc(verbose=F)
   }
-  
+
   #scale columns (branches) to sum to 1
+  branch.lengths <- as.numeric(edgeLength(tree,1:branch.count))
   sites_x_branches <- apply(sites_x_branches,MARGIN=2,FUN=scale.to,1)
   
-  branch.lengths <- as.numeric(edgeLength(tree,1:branch.count))
   sites_x_branches <- sites_x_branches[,1:branch.count] * branch.lengths
   PE.vec <- apply(sites_x_branches,MARGIN=1,FUN=sum,na.rm=T)
   
@@ -115,10 +115,19 @@ calc_PE_mymodels <- function(tree, sites_x_tips,model.groups) {
     names( sites_x_branches)[i] <- labels(tree)[i]
     cat(i,dim(sites_x_branches),"\n")
   }
+
+  # calculate 'species' measures
+  cat("\nCalculating species measures\n")
+  SR.vec <- apply(sites_x_tips,MARGIN=1,FUN=sum,na.rm=TRUE)
+  cat("SR done\n")
+  sites_x_tips <- apply(sites_x_tips,MARGIN=2,FUN=scale.to,1)
+  WE.vec <- apply(sites_x_tips,MARGIN=1,FUN=sum,na.rm=TRUE)
+  cat("WE done\n\n")
+  
   rm(sites_x_tips); gc()
   branch.labels <- labels(tree)
   branch.count <- length(labels(tree))
-  
+
   # add names and occupancy columns for internal branches
   for (i in (nTips(tree)+1):branch.count) {
     branch.labels[i] <- paste("b",i,sep="")
@@ -131,15 +140,25 @@ calc_PE_mymodels <- function(tree, sites_x_tips,model.groups) {
     cat(i,branch.labels[i],length(desc),"\n")
     gc(verbose=F)
   }
+
+  # calculate PD
+  cat("\nCalculating PD\n")
+  branch.lengths <- as.numeric(edgeLength(tree,1:branch.count))
+  sites_x_branches_PD <- matrix(0)
+  for (i in 1:ncol(site_x_branches_PD)) {
+    sites_x_branches_PD[,i] <- sites_x_branches[,i] * branch.lengths[i]
+  }
+  PD.vec <- apply(sites_x_branches_PD,MARGIN=1,FUN=sum,na.rm=T)
+  rm(sites_x_branches_PD)
+  gc()
   
   #scale columns (branches) to sum to 1
   sites_x_branches <- apply(sites_x_branches,MARGIN=2,FUN=scale.to,1)
   
-  branch.lengths <- as.numeric(edgeLength(tree,1:branch.count))
   sites_x_branches <- sites_x_branches[,1:branch.count] * branch.lengths
   PE.vec <- apply(sites_x_branches,MARGIN=1,FUN=sum,na.rm=T)
   
-  PE <- data.frame(cbind(1:nrow(sites_x_branches),PE.vec))
+  PE <- data.frame(cbind(1:nrow(sites_x_branches),PE.vec, PD.vec, WE.vec, SR.vec))
   names(PE) <- c("site","PE")
   return(PE)
 }
