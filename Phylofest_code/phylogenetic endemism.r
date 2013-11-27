@@ -140,17 +140,23 @@ calc_PE_mymodels <- function(tree, sites_x_tips,model.groups) {
     cat(i,branch.labels[i],length(desc),"\n")
     gc(verbose=F)
   }
+  
+  # A ONE-OFF LINE TO WRITE THE SITES BY BRANCHES MATRIX TO DISK
+  # OPTION TO PASS IT DIRECTLY IN FUTURE
+  #write.csv(sites_x_branches,"Gehyra_sites_by_branches.csv")
 
   # calculate PD
   cat("\nCalculating PD\n")
   branch.lengths <- as.numeric(edgeLength(tree,1:branch.count))
-  sites_x_branches_PD <- matrix(0)
-  for (i in 1:ncol(site_x_branches_PD)) {
+  sites_x_branches_PD <- matrix(0,nrow=nrow(sites_x_branches),ncol=ncol(sites_x_branches))
+  for (i in 1:ncol(sites_x_branches)) {
     sites_x_branches_PD[,i] <- sites_x_branches[,i] * branch.lengths[i]
   }
   PD.vec <- apply(sites_x_branches_PD,MARGIN=1,FUN=sum,na.rm=T)
   rm(sites_x_branches_PD)
   gc()
+  
+  cat("\nCalculating PE\n")
   
   #scale columns (branches) to sum to 1
   sites_x_branches <- apply(sites_x_branches,MARGIN=2,FUN=scale.to,1)
@@ -159,6 +165,6 @@ calc_PE_mymodels <- function(tree, sites_x_tips,model.groups) {
   PE.vec <- apply(sites_x_branches,MARGIN=1,FUN=sum,na.rm=T)
   
   PE <- data.frame(cbind(1:nrow(sites_x_branches),PE.vec, PD.vec, WE.vec, SR.vec))
-  names(PE) <- c("site","PE")
+  names(PE) <- c("site","PE","PD","WE","SR")
   return(PE)
 }
