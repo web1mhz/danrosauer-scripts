@@ -28,7 +28,7 @@ image.grid = function(tasc,tfile,zlim=NULL,cols=NULL) {
 ################################################################################
 
 #TEMP
-#row.limit=100000
+#row.limit=20000
 #TEMP
 
 #define directories
@@ -44,9 +44,7 @@ tree.file     = 'trees/Gehyra uniq lineages 141113 final.tre'
 outgroup      = 'Heteronotia'
 preface       = 'lin_model_'
 
-#richness_output = "reptfrog_rich_lin_25Sep_thresh_01"
-endemism_output = "gehyra_PE"  #"frog_end_sp_thr0.5"
-output_prefix <- "gehyra_PE"
+output_prefix <- "gehyra_"
 threshold = 0.01  # this is not a species level threshold, but one used for each lineage model
 
 ####  end of parameters
@@ -117,6 +115,7 @@ cat("Not in model names:",setdiff(tree.names,model.names))
 gc()
 #result <- calc_PE(tree,pos[1:row.limit,which(names(pos) %in% tree.names)],"probability")
 #result <- calc_PE{(tree,pos[,which(names(pos) %in% tree.names)],"probability")
+#result <- calc_PE_mymodels(tree,pos[1:row.limit,which(names(pos) %in% tree.names)],model.groups)
 result <- calc_PE_mymodels(tree,pos[,which(names(pos) %in% tree.names)],model.groups)
 gc()
 
@@ -158,16 +157,65 @@ gc()
 # rm(pos_end)
 
 pos_output <- cbind(pos[,2:1],result)
-#pos_output <- pos[,c(2,1,cols+1,cols+2)]
+pos_output <- pos_output[,-3] # omit the site column
 
-dataframe2asc(pos_output,paste(output_prefix,"PE.asc",sep=""),output.dir)
-dataframe2asc(pos_output,paste(output_prefix,"PD.asc",sep=""),output.dir)
-dataframe2asc(pos_output,paste(output_prefix,"WE.asc",sep=""),output.dir)
-dataframe2asc(pos_output,paste(output_prefix,"SE.asc",sep=""),output.dir)
+# add residual columns
+PE_WE_mod <- lm(pos_output$PE~pos_output$WE)
+pos_output$PE_WE_resid <- PE_WE_mod$residuals
+PE_WE_loglog_mod <- lm(log(pos_output$PE)~log(pos_output$WE),subset=which(!is.infinite(log(pos_output$WE))))
+pos_output_log <- cbind(pos_output[which(!is.infinite(log(pos_output$WE))),],PE_WE_loglog_mod$residuals)
+dataframe2asc(pos_output_log[,c(1,2,8)],paste(output_prefix,"PE_WE_loglog_resid.asc",sep=""),output.dir)
 
-result.ras <- raster(paste(output.dir,output_prefix,".asc",sep=""))
+
+
+filenames <- c(paste(output_prefix,"PE.asc",sep=""),paste(output_prefix,"PD.asc",sep=""),paste(output_prefix,"WE.asc",sep=""),paste(output_prefix,"SR.asc",sep=""),paste(output_prefix,"PE_WE_resid.asc",sep=""),paste(output_prefix,"PE_WE_loglog_resid.asc",sep=""))
+dataframe2asc(pos_output,filenames,output.dir)
+
+write.csv(pos_output,"gehyra_scores.csv")
+
+# make some output images
+PE.ras <- raster(filenames[1])
 windows(9,9)
-plot(result.ras)
+plot(PE.ras,main="PE",col=rainbow(25,start=0.1,end=1),ylim=c(180,1400),xlim=c(700,2800))
 
-#write.asc(.asc, paste(output.dir,'sp_richness.asc',sep='') #write out the ascii grid file
-image.grid("PE_output.asc",paste(output.dir,'PE_gehyra.png',sep=''),zlim=c(0,1),cols=model_cols) #plot the image after logging the actual data
+PD.ras <- raster(filenames[2])
+windows(9,9)
+plot(PD.ras,main="PD",col=rainbow(25,start=0.1,end=1),ylim=c(180,1400),xlim=c(700,2800))
+
+WE.ras <- raster(filenames[3])
+windows(9,9)
+plot(WE.ras,main="WE",col=rainbow(25,start=0.1,end=1),ylim=c(180,1400),xlim=c(700,2800))
+
+SR.ras <- raster(filenames[4])
+windows(9,9)
+plot(SR.ras,main="SR",col=rainbow(25,start=0.1,end=1),ylim=c(180,1400),xlim=c(700,2800))
+
+PE_WE_resid.ras <- raster(filenames[5])
+windows(9,9)
+plot(PE_WE_resid.ras,main="Residual of PE ~ WE",col=rainbow(25,start=1/6,end=1),ylim=c(240,1400),xlim=c(750,2800))
+
+PE_WE_loglog_resid.ras <- raster(filenames[6])
+windows(9,9)
+plot(PE_WE_loglog_resid.ras,main="Residual of logPE ~ logWE",col=rainbow(25,start=1/6,end=0.9),ylim=c(240,1400),xlim=c(750,2800))
+
+
+windows(16,10)
+par(mfrow=c(2,2),mar=c(3,4,3,2))
+plot(PE.ras,main="PE",col=rainbow(25,start=0.1,end=1),ylim=c(240,1400),xlim=c(750,2800))
+plot(PD.ras,main="PD",col=rainbow(25,start=0.1,end=1),ylim=c(240,1400),xlim=c(750,2800))
+plot(WE.ras,main="WE",col=rainbow(25,start=0.1,end=1),ylim=c(240,1400),xlim=c(750,2800))
+plot(SR.ras,main="SR",col=rainbow(25,start=0.1,end=1),ylim=c(240,1400),xlim=c(750,2800))
+
+# now for some residuals
+windows(10,10)
+plot(pos_output$WE,pos_output$PE,cex=0.7,xlab="WE",ylab="PE")
+PE_WE_mod <- lm(pos_output$PE~pos_output$WE)
+abline(PE_WE_mod,col='red')
+pos_output$PE_WE_resid <- PE_WE_mod$residuals
+
+windows(10,10)
+plot(log(pos_output$WE),log(pos_output$PE),cex=0.7,xlab="WE",ylab="PE")
+
+
+PE.tasc <- asc.from.raster(PE.ras)
+image.grid(PE.tasc,filenames[1],zlim=c(0,1),cols=rainbow(10)) #plot the image after logging the actual data
