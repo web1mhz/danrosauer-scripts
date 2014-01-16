@@ -1,5 +1,5 @@
-## this script calculates richness and endemism from modelled suitability surfaces
-## it requires all the model grids to have the same extent
+## the calc_PE function in this script calculates phylogenetic endemism from a tree and a sites by tips (species) matrix.
+## the columns in the 
 
 library(phylobase)
 
@@ -36,8 +36,8 @@ calc_PE <- function(tree, sites_x_tips,presence=c("presence","abundance","probab
   for (i in 1:nTips(tree)) {
     sites_x_branches[,i] <- sites_x_tips[,which(labels(tree)[i]==names(sites_x_tips))]
     names( sites_x_branches)[i] <- labels(tree)[i]
-    cat(i,dim(sites_x_branches),"\n")
   }
+
   rm(sites_x_tips); gc()
   branch.labels <- labels(tree)
   branch.count <- length(labels(tree))
@@ -55,7 +55,7 @@ calc_PE <- function(tree, sites_x_tips,presence=c("presence","abundance","probab
     }
     sites_x_branches[,i] <- branch_col
     names(sites_x_branches[i]) <- branch.labels[i]
-    cat(i,branch.labels[i],length(desc),"\n")
+    #cat(i,branch.labels[i],length(desc),"\n")
     gc(verbose=F)
   }
 

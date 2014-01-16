@@ -19,7 +19,7 @@ tree            <- phylo4(read.nexus(tree.file))
 remap           <- read.csv(remap.file,stringsAsFactors = FALSE)
 
 ### take a subset of the spatial data, for a quick demo ###
-species_xy <- species_xy[(species_xy$Latitude > -23),]
+species_xy <- species_xy[(species_xy$Latitude > -25),]
 species_xy <- species_xy[(species_xy$Longitude > 140),]
 
 # remap tree names to match the spatial data
@@ -46,20 +46,33 @@ subtree <- subset(tree,tips.include=on_tree)
 #get unique sites
 sites_xy <- unique(species_xy[,2:4])
 
-# create sites_x_species data frame
-sites_x_species <- data.frame(sites_xy$site,row.names=NULL)
-names(sites_x_species) <- "sites"
+# create sites_x_tips data frame
+sites_x_tips <- data.frame(sites_xy$site,row.names=NULL)
+names(sites_x_tips) <- "sites"
 
-# create a sites_x_species matrix with the same order as the tree
+# create a sites_x_tips matrix with the same order as the tree
 for (i in 1:nTips(subtree)) {
-  sites_x_species[,i+1] <- rep(0,nrow(sites_x_species))
+  sites_x_tips[,i+1] <- rep(0,nrow(sites_x_tips))
   this_label <- labels(subtree)[i]
-  names(sites_x_species)[i+1] <- this_label
+  names(sites_x_tips)[i+1] <- this_label
   this_species_xy <- species_xy[which(species_xy$Species==this_label),4]
-  sites_x_species[which(sites_x_species$site %in% this_species_xy),i+1] <- 1
+  sites_x_tips[which(sites_x_tips$site %in% this_species_xy),i+1] <- 1
 }
 
 gc()
-result <- calc_PE(subtree,sites_x_species,"presence")
+result <- calc_PE(subtree,sites_x_tips[,-1],"presence") # call calc_PE, omiting the site name column from the matrix
 output <- cbind(sites_xy,result) # add on the lat and long columns
 gc()
+
+
+### optional plot PE result ###
+
+library(classInt)
+class_count <- 15
+
+my.class.fr<-classIntervals(log(output$PE),n=class_count,style="equal")   
+my.col.fr<-findColours(my.class.fr,rainbow(class_count,start=0.1)) # ramp colors
+
+# Map
+windows()
+plot(output$Longitude,output$Latitude,col=my.col.fr,pch=20)
