@@ -17,7 +17,13 @@ MarxanInputs <- function(
   branch_ranges   <- as.numeric(branch_data$BranchRange)
   branch_names    <- as.character(labels(tree))
   branch_IDs      <- as.numeric(getNode(tree))
-  branch_targets  <- round(branch_ranges * target,4)  # for targets other than a flat %, set target via a function
+  
+  if (target=='func') {
+    branch_targets <- round(get_target(branch_ranges),4)
+  } else {
+    branch_targets  <- round(branch_ranges * target,4)  
+  }
+  
   branch_info     <- as.data.frame(print(tree))
   branch_lengths  <- branch_info$edge.length
   branch_lengths[which(is.na(branch_lengths))] <- 0
@@ -67,4 +73,12 @@ fixnames <- function (text_in) {
   text_out <- gsub(" ","_",text_out)
   text_out <- paste("x_",text_out,sep="")
   return(text_out)
+}
+
+get_target <- function(range) {
+  target <- min(range,10)
+  if (range > 100) {
+    target <- min((range / 10),200)
+  }
+  return(target)
 }
