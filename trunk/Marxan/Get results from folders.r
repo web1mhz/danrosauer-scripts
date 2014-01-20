@@ -3,7 +3,8 @@ rm(list=ls())
 base_dir       <- "/home2/danr/marxan_mammals/batch_test/" # the output directory sits within this
 dir_pattern    <- "marxan_batch_"
 output_dir     <- paste(base_dir,"marxan_batch_combined/",sep="")
-files_to_get <- c("pu.dat","input.dat")
+files_to_get   <- c("pu.dat","input.dat")
+runs_per_tree  <- 10
 
 dirs = list.files(base_dir,pattern=dir_pattern, include.dirs=TRUE, recursive=FALSE)
 
@@ -30,7 +31,7 @@ for (dir in dirs) {
         cat("Did not find", filename,"\n")
       }
   } else {
-    cat("Skipped",dir_num,"\n")
+    cat("Skipped",dir,"\n")
   }
 }
 
@@ -57,13 +58,23 @@ for (dir in dirs) {
       cat("Did not find", filename,"\n")
     }
   } else {
-    cat("Skipped",dir_num,"\n")
+    cat("Skipped",dir,"\n")
   }
 }
-
 
 output_filename <- paste(output_dir,"ssoln.csv",sep="")
 write.csv(ssoln,output_filename,row.names=F)
 
 output_filename <- paste(output_dir,"best.csv",sep="")
 write.csv(best,output_filename,row.names=F)
+
+# now combine to give a single value per cell
+combined           <- data.frame(cbind(best[,1],apply(best[,-1],MARGIN=1,FUN=sum)),row.names=NULL)
+names(combined)    <- c("planning_unit","best_sum")
+combined$best_prop <- apply(best[,-1],MARGIN=1,FUN=mean)
+combined$all_sum   <- apply(ssoln[,-1],MARGIN=1,FUN=sum)
+combined$all_prop  <- apply(ssoln[,-1],MARGIN=1,FUN=mean)/runs_per_tree
+combined$all_sd    <- apply(ssoln[,-1],MARGIN=1,FUN=sd)
+
+output_filename <- paste(output_dir,"combined.csv",sep="")
+write.csv(combined,output_filename,row.names=F)
