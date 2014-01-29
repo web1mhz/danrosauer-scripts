@@ -1,18 +1,18 @@
 library(phylobase)
 
 ExtractBranchRanges = function(Trees_in,
-                              QuadInfo_in, 
+                              QuadInfo_in,
                               SpecMaster_in, 
                               Occ_in, 
                               base_dir,
                               output_dir,
                               parallel_cores = 1,
                               multi_tree = FALSE,
-                              iterations = 1000,
+                              iterations = 100,
                               interval = 1,
                               first_tree = 1,
                               output_Type = "generic",  #generic or Marxan
-				  first_dir_num = 1,
+				                      first_dir_num = 1,
                               feedback = "")      #optional
 {
 
@@ -22,7 +22,6 @@ ExtractBranchRanges = function(Trees_in,
    ##################
    
 #  Tree_in is an ape phylo object
-#  QuadInfo_in is a table which lists all quadrats (grid cells) by a column QuadID
 #  SpecMaster_in lists all species in the analysis with columns as follows:
 #    taxon_name_tree gives taxon names which match the tree tip labels
 #    SpecID gives a number (or name) to match values in Occ_in
@@ -175,9 +174,10 @@ ExtractBranchRanges = function(Trees_in,
       is.tip <- tree_table$node.type == "tip"
 
       for (m in 1:CountNodes) {
+
 # a possible time saver:
   # check if BranchDone is true for all direct children.  
-  # if so, just aggregate BranchQuads for the two, rather than for all descendents
+  # if so, just aggregate BranchQuads for the two direct children, rather than for all descendents
                 
         if (is.tip[m]) {
           BranchLatin <- tree_table$label[m] 
@@ -221,18 +221,23 @@ ExtractBranchRanges = function(Trees_in,
        
       #name the output folder
       if (run_count > 1) {
-	 directory_number <- j + first_dir_num - 1  # allows for starting with a later number
+	      directory_number <- j + first_dir_num - 1  # allows for starting with a later number
         this_output_dir <- paste(base_dir,output_dir,"_",directory_number ,sep="")
       } else {
         this_output_dir <- paste(base_dir,output_dir,sep="")
       }
+   
+      quad_list <- QuadInfo_in[,c("GRID360ID", "LandProportion")]
+      
+      gc()
       
       if (output_Type == "Marxan") {
         result <- MarxanInputs(write.dir = this_output_dir,
+                               quad_list = quad_list,
                                tree = phy4,
                                branch_data = BranchData,
                                node_occ = BranchOccAll,
-                               target =          0.1,
+                               target =          'func',
                                spf_multiplier =  3)
       }
       
