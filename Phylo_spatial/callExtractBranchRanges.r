@@ -9,7 +9,7 @@
   
   source("/home2/danr/scripts/phylo_spatial/ExtractBranchRanges.r")
   source("/home2/danr/scripts/phylo_spatial/Prepare_Marxan_Inputs.r")
-  setwd("/home2/danr/mammal_data")
+  setwd("/home2/danr/marxan_mammals/mammal_data")
 
   library(ape)
   
@@ -17,12 +17,13 @@
 
   # Files
   Occ_filename            <- "Occ360x114Mammals_2010_revised_Nov11.csv"
-  ClimLand_filename       <- "ClimLand_360x114_islands.csv"
+  #ClimLand_filename       <- "ClimLand_360x114_islands.csv"
+  Global360x114_filename        <- "Global360x114.csv"
   phylogeny_filename      <- "FritzTree.rs200k.100trees.tre"
   #phylogeny_filename     <- "FritzTree.rs200k.100trees_1st_tree.tre"  
   SpecMaster_filename     <- "Mammals 2010 Range Tree Lookup Nov2011.csv"
-  base_dir                <- "/home2/danr/marxan_runs/mammals/batch_test/" # the output directory sits within this
-  output_dir              <- "marxan_batch"
+  base_dir                <- "/home2/danr/marxan_mammals/ph_step_batch/" # the output directory sits within this
+  output_dir              <- "run_"
   output_type             <- "Marxan"
   
   # Read and prepare occurrence file
@@ -30,12 +31,11 @@
   Occ <- Occ[,c(5,2,10)]
   names(Occ) <- c("SpecID", "QuadID","Proportion")
   
-#   # Read alternative climland (Walter's revised) to get set of Quads to include  (with islands etc)
-#   ClimQuads <- read.csv(ClimLand_filename)
-#   ClimQuads <- subset(ClimQuads, select = c(HBWID,X_COORD, Y_COORD, Prop0_00625notsea,Prop_goge2_nowat, IsIsland))
-#   Quads_include <- subset (ClimQuads,  Prop0_00625notsea >= 0.3 | Prop_goge2_nowat >= 0.3 | IsIsland == 1, select = c(HBWID))
-#   Occ <- Occ[Occ$QuadID %in% Quads_include[,1],]
-#   rm(ClimQuads)
+  # Read alternative climland (Walter's revised) to get set of Quads to include  (with islands etc)
+  QuadInfo  <- read.csv(Global360x114_filename)
+  QuadInfo  <- subset(QuadInfo, select=c("GRID360ID", "X_COORD", "Y_COORD", "HBWID", "ROW", "COL", "AREA", "PERIMETER", "PROP0_0062", "LandProportion"))
+  QuadInfo  <- subset (QuadInfo,  LandProportion >= 0.0002)
+  Occ <- Occ[Occ$QuadID %in% QuadInfo[,1],]
 
   cat("\nReading phylogeny files\n")
   phy.orig <- read.nexus(file = phylogeny_filename)
@@ -65,19 +65,19 @@
   #number_of_cores <- 24
   #let doMPI and doMC work out the number of cores
   
-  parameters1 <-  list(Trees_in = phy.orig,
-                      QuadInfo_in = 1,           # QuadInfo not needed
+  parameters1 <-  list(Trees_in = phy,
+                       QuadInfo_in = QuadInfo,
                       SpecMaster_in = SpecMaster, 
                       Occ_in = Occ, 
                       base_dir,
                       output_dir,
-                      parallel_cores = 1,                       
+                      parallel_cores = 1,
                       multi_tree = TRUE,
-                      iterations = 20,
+                      iterations = 3,
                       interval = 1,
                       first_tree = 1,  # default is 1,
                       output_type,
-			 first_dir_num = 1,
+			                first_dir_num = 1,
                       feedback = "Export node ranges")
 #                     
 #   if (TRUE) {
