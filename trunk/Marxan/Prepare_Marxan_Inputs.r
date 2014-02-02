@@ -20,7 +20,7 @@ MarxanInputs <- function(
   branch_IDs      <- as.numeric(getNode(tree))
   
   if (target=='func') {
-    branch_targets <- round(get_target(branch_ranges),4)
+    branch_targets <- round(get_target(branch_ranges,2),4)
   } else {
     branch_targets  <- round(branch_ranges * target,4)  
   }
@@ -43,7 +43,7 @@ MarxanInputs <- function(
   names(pu_list) <- c("pu_id","pu_name","LandProportion")
 
   pu <- data.frame(pu_list[,c(1,3)])
-  names(pu) <- c("id","area")
+  names(pu) <- c("id","cost")
   node_by_cell_SpID <- merge(spec, node_occ, by.x="species_id", by.y="BranchID")
   puvspr2 <- data.frame(node_by_cell_SpID$species_id,node_by_cell_SpID$QuadID,node_by_cell_SpID$Proportion)
   names(puvspr2) <- c("species","pu_name","amount")  # this data frame has the species number, but the PU name
@@ -86,13 +86,30 @@ fixnames <- function (text_in) {
   return(text_out)
 }
 
-get_target <- function(range) {
+get_target <- function(range, option=1) {
+
+# returns a target area, according to a function (this could be made more general with more parameters)
+  # option 1: target = 10% of range
+  # option 2: target = 50% if < 20 cells, 10 cells if > 20 cells
+  # option 3: target = 100% if < 10 cells, 10 cells if < 100, 10% if < 2000, then flat at 200.
+  
+  if (!(option %in% c(1,2,3))) {
+    option <- 1
+    cat("\nDefaulting to target option 1\n")
+  }
+  
   n <- length(range)
   target <- vector(mode="numeric",length=n)
   for (i in 1:n) {
-    target[i] <- min(range[i],10)
-    if (range[i] > 100) {
-      target[i] <- min((range[i] / 10),200)
+    if (option == 1) {
+      target[i] <- range[i] * 0.1
+    } else if (option == 2) {
+      target[i] <- min(range[i] * 0.5,10)
+    } else if (option == 3) {
+      target[i] <- min(range[i],10)
+      if (range[i] > 100) {
+        target[i] <- min((range[i] / 10),200)
+      }
     }
   }
   return(target)
