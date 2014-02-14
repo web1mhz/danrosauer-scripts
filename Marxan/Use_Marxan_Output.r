@@ -3,19 +3,21 @@
 
 rm(list=ls())
 library(gdata)
+library(raster)
 
-base.dir            <- "C:/Users/u3579238/Work/Software/Marxan/Marxan_runs/"
-input.dir           <- "C:/Users/u3579238/Work/Software/Marxan/Marxan_runs/input/"
-output.dir          <- "output5/"
+base.dir            <- "C:/Users/Dan/Work/Software/Marxan/results/"
+input.dir           <- "C:/Users/Dan/Work/Software/Marxan/results/"
+output.dir          <- ""
 output.path         <- paste(base.dir,output.dir,sep="")
 
 pu_list.file        <- paste(input.dir,"pu_id_lookup.csv",sep="")
 marxan_result.file  <- paste(output.path,"output_ssoln.txt",sep="")
+pu.shapefile        <- paste(output.path,"PUs.shp",sep="")
 
 # mapping options
-draw_map <- TRUE
-draw_raster <- TRUE  #if false, plot points
-extra_header = "Target: 10% per branch. Cost limit: none"  # an additional descriptive line
+draw_map     <- TRUE
+draw_raster  <- FALSE  #if false, plot points
+extra_header <- "Target: 10% per branch. Cost limit: none"  # an additional descriptive line
 
 ############################################
 setwd(base.dir)
@@ -23,13 +25,12 @@ setwd(base.dir)
 pu_list <- read.csv(pu_list.file)
 marxan_result <- read.csv(marxan_result.file)
 max_count <- max(marxan_result$number)
+pu_shapes <- shapefile(pu.shapefile)
 
-marxan_xy <- merge(pu_list,marxan_result,by.x="pu_id",by.y="planning_unit")
-marxan_xy$X <- NULL
+marxan_result <- merge(marxan_result,pu_list,by.x="planning_unit",by.y="pu_id")
+names(marxan_result) <- c("pu_id","freq","QuadID")
 
-setwd(output.path)
-write.csv(marxan_xy,"marxan_xy.csv")
-
+pu_shapes@data <- merge(pu_shapes@data,marxan_result,by.x="HBWID",by.y="QuadID")
 
 if (draw_map) {
   # make a map
@@ -37,7 +38,7 @@ if (draw_map) {
   library(maptools)
   
   class_count <- 10
-  my.classes  <- classIntervals(marxan_xy$number,n=class_count,style="equal",digits=2)
+  my.classes  <- classIntervals(pu_shapes@data$freq,n=class_count,style="equal",digits=2)
   my.pal<-c("lightgrey","yellow","red","purple") # choose colors
   
   windows()
@@ -55,7 +56,7 @@ if (draw_map) {
     legtext <- names(attr(my.col,"table"))  # declare labels
     legcols <- attr(my.col,"palette")
     
-    plot(marxan_xy$Axis_0,marxan_xy$Axis_1,col=my.col,pch=18, main=header)
+    plot(pu_shapes,col=my.col,border=my.col, main=header)
     legend(0,60,legend=legtext,col=my.col,fill=legcols)
   }
 
