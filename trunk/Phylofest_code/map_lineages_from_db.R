@@ -22,14 +22,14 @@ ch <- odbcConnect(dsn="Moritz_specimen_ANSI")
 odbcGetInfo(ch)
 specimen_columns <- sqlColumns(ch,"specimen",special=F)
 
-
 sqlQuery <- paste("select * from genus where genus = '",genus,"'",sep="")
 
 genus_row  <- sqlQuery(ch,query=sqlQuery)
 genus_id <- genus_row$genus_id
 rm(genus_row)
 
-sqlQuery <- paste("select * from specimen where genus_id = ",genus_id," and species = '",species,"' and lineage_from_sequence is not NULL",sep="")
+sqlQuery <- paste("select * from specimen where genus_id = ",genus_id," and species = '",species,"' and lineage_from_sequence is not NULL ",
+                  "and lineage_from_sequence != '' and latitude is not NULL and longitude is not NULL",sep="")
 records <- sqlQuery(ch,query=sqlQuery,stringsAsFactors=F)
 odbcClose(channel=ch)
 
@@ -67,9 +67,9 @@ for (lineage in lineages) {
 
   print(m)
   
-  graphics.off()
+  dev.off()
 
-  #   # write a kml
+  # write a kml
   filename.kml <- paste(output_dir,"/",output_prefix,lineage,".kml",sep="")
   sp_points <- SpatialPointsDataFrame(coords=lineage_XY,data=lineage_records)
   kmlPoints(sp_points,kmlfile=filename.kml,kmlname=lineage,name=lineage_records$tissue_number, icon=kml_icon)
@@ -78,3 +78,4 @@ for (lineage in lineages) {
 
 }
 
+graphics.off()
