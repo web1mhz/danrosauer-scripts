@@ -33,7 +33,7 @@ MarxanInputs <- function(
   spec <- spec[-which(spec$spf==0),]
 
   pu_from_occ  <- data.frame(sort(unique(node_occ[,2])))
-  names(pu_from_occ) <- "QuadID"
+  names(pu_from_occ)  <- "QuadID"
   names(quad_list)[1] <- "QuadID"
 
   pu_list      <- merge(pu_from_occ,quad_list,by="QuadID", all=F)
@@ -51,7 +51,9 @@ MarxanInputs <- function(
 
   puvspr2 <- merge(pu_list, puvspr2, by="pu_name")
   puvspr2 <-  puvspr2[,c("species","pu_id","amount")]
+
   names(puvspr2) <- c("species","pu","amount")
+  puvspr2$species <- as.numeric(puvspr2$species)	
   
   # now order files to use Marxan quick preparation method
   puvspr2 <- puvspr2[order(puvspr2$pu),]
@@ -91,23 +93,32 @@ get_target <- function(range, option=1) {
 # returns a target area, according to a function (this could be made more general with more parameters)
   # option 1: target = 10% of range
   # option 2: target = 50% if < 20 cells, 10 cells if > 20 cells
+  # option 3: target = 25% if less than 100 cells, then a flat 25.  Minimum target = 1
   # option 3: target = 100% if < 10 cells, 10 cells if < 100, 10% if < 2000, then flat at 200.
   
-  if (!(option %in% c(1,2,3))) {
+  if (!(option %in% c(1,2,3,4))) {
     option <- 1
     cat("\nDefaulting to target option 1\n")
   }
   
   n <- length(range)
   target <- vector(mode="numeric",length=n)
-  for (i in 1:n) {
-    if (option == 1) {
-      target[i] <- range[i] * 0.1
-    } else if (option == 2) {
+  if (option ==1) {
+    target <- range * 0.1
+  } else if (option ==2) {
+    for (i in 1:n) {
       target[i] <- min(range[i] * 0.5,10)
-    } else if (option == 3) {
-      target[i] <- min(range[i],10)
-      if (range[i] > 100) {
+    }
+  } else if (option ==3) {
+    for (i in 1:n) {
+      target[i] <- min(range[i] * 0.25,25)
+    }
+    target[target < 1] <- max(range[target < 1], 1)
+  } else if (option ==4) {
+    for (i in 1:n) {
+      if (range[i] >= 100) {
+        target[i] <- min(range[i],10)
+      } else if (range[i] > 100) {
         target[i] <- min((range[i] / 10),200)
       }
     }
