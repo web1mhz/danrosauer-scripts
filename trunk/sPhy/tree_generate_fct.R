@@ -20,6 +20,7 @@ tree_generate<-function(numsp,ntrees){
 	N<-ntrees*10
 	trees=rmtree(N,numsp) #simulating trees
 	colless<- ldply(trees, foo, metric = "colless")  # calculate metric for each tree
+	gamma<-ldply(trees, foo, metric = "gamma")
 	
 	#ID extreme trees/calculate quantiles
 	balanced.10.percent=as.vector(quantile(colless[,1], probs=seq(0,1,0.1))[2])
@@ -58,16 +59,26 @@ tree_generate<-function(numsp,ntrees){
 	for (i in 1:length(lowgammatrees)){
 	treetemp <- chronotrees2[[i]]
 	higammatrees [[i]]<- suppressWarnings(deltaTree(treetemp, 0.1))
-	#higammatrees [[i]]<- suppressWarnings(geiger::rescale(treetemp, 0.1))
 		}
 	class(higammatrees)="multiphylo"
 
-	# calculate gamma metric for each tree
+	# calculate gamma metric for each extreme tree
 	gamma_hi<- ldply(higammatrees, foo, metric = "gamma")  
 	
+	#ultrametricize average trees
+	chronotrees=list()
+	for (i in 1:length(trees)){
+	tree=chronopl(trees[[i]], lambda=0,age.min=1,iter.max=1000,eval.max=1000)
+	attr(tree,c("ploglik"))<-NULL
+	attr(tree,c("rates"))<-NULL
+	attr(tree,c("message"))<-NULL
+	chronotrees[[i]] <- tree
+	}
+	class(chronotrees)="multiphylo"
+	
 	#final tree list - subset to the desired output
-	treelist<-c(lowgammatrees,higammatrees)
-	treeinfo<-cbind(rbind(Ic_trees2,Ic_trees2),rbind(gamma_chronotrees2,gamma_hi))
+	treelist<-c(lowgammatrees,higammatrees,chronotrees)
+	treeinfo<-cbind(rbind(Ic_trees2,Ic_trees2,colless),rbind(gamma_chronotrees2,gamma_hi,gamma))
 	subtrees<-c(sort(sample(1:length(treelist),ntrees)))
 	treelist<-treelist[subtrees]
 	treeinfo<-treeinfo[subtrees,]
@@ -77,4 +88,6 @@ tree_generate<-function(numsp,ntrees){
 	return(output)
 }
 
-#a<-tree_generate(64,10)
+# a<-tree_generate(64,10)
+# par(mfrow=c(3,3))
+# lapply(a$treelist[-1],"plot")

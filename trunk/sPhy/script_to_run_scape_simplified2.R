@@ -119,33 +119,33 @@ runscape<-function(numsp=64,scape.type=c("all",1,2,3,4,5,6,7,8),scape.size=15,tr
 
 scapemetrics<-function(Spmatrixlist,treelist){
 	
-species<-colnames(Spmatrixlist[[1]]$abundance.matrix)	
+  species<-colnames(Spmatrixlist[[1]]$abundance.matrix)	
 
-##calculate metrics from combined_metrics script
-rescompleteinfo <-lapply(Spmatrixlist,FUN=function(y){
-	colnames(y$abundance.matrix)<-species
-	tr<-y$TREE
-	a<-pd_fcts(y$abundance.matrix,treelist[[tr]])
-	b<-endemism_fcts(y$abundance.matrix,treelist[[tr]])
-	c<-mpd_fcts(y$abundance.matrix,treelist[[tr]])
-	d<-rao_fcts(y$abundance.matrix,treelist[[tr]])
-	cbind(a,b,c,d,tr)
+  ##calculate metrics from combined_metrics script
+  rescompleteinfo <-lapply(Spmatrixlist,FUN=function(y){
+  	colnames(y$abundance.matrix)<-species
+  	tr<-y$TREE
+  	a<-pd_fcts(y$abundance.matrix,treelist[[tr]])
+  	b<-endemism_fcts(y$abundance.matrix,treelist[[tr]])
+  	c<-mpd_fcts(y$abundance.matrix,treelist[[tr]])
+  	d<-rao_fcts(y$abundance.matrix,treelist[[tr]])
+  	cbind(a,b,c,d,tr)
 	})
 
-########output metric results
-
-results<-do.call(rbind.data.frame,rescompleteinfo)
-ident<-rownames(results)
-identspl<-do.call(rbind.data.frame,(strsplit(ident,"[.]")))
-colnames(identspl)<-c("Landscape","CellID")
-results2<-cbind(identspl,results)
-return(results2)
+  ########output metric results
+  
+  results<-do.call(rbind.data.frame,rescompleteinfo)
+  ident<-rownames(results)
+  identspl<-do.call(rbind.data.frame,(strsplit(ident,"[.]")))
+  colnames(identspl)<-c("Landscape","CellID")
+  results2<-cbind(identspl,results)
+  return(results2)
 }
 
 ###############USING SCAPE SETUP
 ####################Generate trees
 numsp=64
-numtrees=2
+numtrees=4
 tree_gen<-tree_generate(numsp,numtrees)
 treeinfo<-tree_gen$treeinfo
 treelist<-tree_gen$treelist
