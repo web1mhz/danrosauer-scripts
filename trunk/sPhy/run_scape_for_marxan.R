@@ -22,19 +22,16 @@ setwd("C:/Users/u3579238/Work/Software/danrosauer-scripts/sPhy")
 ##Necessary source files (pls load all)
 
 ##code for the wrapper functions that run the landscape simulation and the tree generation
-source('script_to_run_scape5_simplified.R', chdir = TRUE)
-
-##code for the phylogenetic alpha-diversity metrics for the paper
-source('combined_metrics1.1.R', chdir = TRUE)
+source('C:/Users/u3579238/Dropbox/sDiv S-Phy/groups/simulation/code/simulation/Working_Sims/script_to_run_scape5_simplified.R', chdir = TRUE)
 
 ##back end code for the scape script - generates landscapes using trees
-source('gradient_cart_simulation_v3.1.R', chdir = TRUE)
+source('C:/Users/u3579238/Dropbox/sDiv S-Phy/groups/simulation/code/simulation/Working_Sims/gradient_cart_simulation_v3.1.R', chdir = TRUE)
 
 ##plotting and landscape perturbation functions
-source('landscape_manipulation_plotting.R', chdir = TRUE)
+source('C:/Users/u3579238/Dropbox/sDiv S-Phy/groups/simulation/code/simulation/Working_Sims/landscape_manipulation_plotting.R', chdir = TRUE)
 
 ##generate trees with a variation of shapes
-source('tree_generate_fct.R', chdir = TRUE)
+source('C:/Users/u3579238/Dropbox/sDiv S-Phy/groups/simulation/code/simulation/Working_Sims/tree_generate_fct.R', chdir = TRUE)
 
 #Meaning of scape types - 1st number is the input # for the runscape function, second # is the figure reference for each landscape type.
 	 
@@ -76,7 +73,7 @@ treelist<-tree_gen$treelist		#save resulting trees
 ###################Generate scapes
 #uses default function values, allows you to change tree size, landscape size, specify landscape types to create
 
-scape.size=50 	#specify landscape size (this is one edge of square matrix)
+scape.size=100 	#specify landscape size (this is one edge of square matrix)
 total.cells=(scape.size+1)^2 
 maxabund=100 #what is the highest abundance (carrying capacity) possible in a patch?
 #subsample.percent=75	
@@ -94,7 +91,7 @@ Spmatrixlist <- runscape(numsp=numsp,scape.type=scape.type,scape.size=scape.size
 
 library(phylobase)
 
-source("C:/Users/u3579238/Work/Software/danrosauer-scripts/Marxan/Prepare_Marxan_Inputs.r")
+source("C:/Users/u3579238/Work/Software/danrosauer-scripts/sPhy/Prepare_Marxan_Inputs.r")
 
 # TEMP SET TO A SINGLE SCAPE DURING DEVELOPMENT
 scapenum          <- 1
