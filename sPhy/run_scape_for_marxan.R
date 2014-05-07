@@ -76,7 +76,7 @@ treelist<-tree_gen$treelist		#save resulting trees
 ###################Generate scapes
 #uses default function values, allows you to change tree size, landscape size, specify landscape types to create
 
-scape.size=25 	#specify landscape size (this is one edge of square matrix)
+scape.size=50 	#specify landscape size (this is one edge of square matrix)
 total.cells=(scape.size+1)^2 
 maxabund=100 #what is the highest abundance (carrying capacity) possible in a patch?
 #subsample.percent=75	
