@@ -3,7 +3,6 @@
 setwd("~/Dropbox/ARC Laureate/iButtons/lawnhillibuttons")
 library(plyr)
 library(stringr)
-library(reshape2)
 
 rm(list=ls())
 
@@ -30,6 +29,7 @@ for (file in files) {
 
   
   site <- str_replace(file,".csv","")
+  site <- str_replace(site,"LawnHill ","")
   site <- str_replace_all(site," ","_")
   site_rep <- rep(site,nrow(button_data))
   button_data <- cbind(site=site_rep,button_data)
@@ -55,15 +55,15 @@ for (file in files) {
 }
 
 # write a combined iButton data table to file
-write.csv(combined,"Lawn_Hill_iButtons.csv",row.names=F)
+# write.csv(combined,"Lawn_Hill_iButtons.csv",row.names=F)
 
 ### some data summary and plots ###
 
 
 # summarise data by time of day
-median_temp_by_hour <- tapply(button_data$temp,INDEX=as.factor(button_data$time_in_hours),FUN=median)
+median_temp_by_hour <- tapply(combined$temp,INDEX=as.factor(round(combined$time_in_hours,1)),FUN=median)
 median_temp_by_hour <- data.frame(time=row.names(median_temp_by_hour),median_temp=median_temp_by_hour,row.names=NULL,stringsAsFactors=F)
-mean_temp_by_hour <- tapply(button_data$temp,INDEX=as.factor(button_data$time_in_hours),FUN=mean)
+mean_temp_by_hour <- tapply(combined$temp,INDEX=as.factor(round(combined$time_in_hours,1)),FUN=mean)
 mean_temp_by_hour <- data.frame(time=row.names(mean_temp_by_hour),mean_temp=mean_temp_by_hour,row.names=NULL,stringsAsFactors=F)
 
 # summarise data by site
@@ -71,19 +71,12 @@ site_stats <- ddply(
                     .data = combined, 
                     .variables = c("site"),
                     .fun=summarize,
-                      median = median(temp),
-                      mean = mean(temp),
-                      95perc   = quantile(temp,0.95),
-                      5perc    = quantile(temp,0.05),
-                      temp_range_90   = 95perc - 5perc
+                      site_median = median(temp),
+                      site_mean = mean(temp),
+                      perc_95   = quantile(temp,0.95),
+                      perc_05    = quantile(temp,0.05),
+                      temp_range_90   = perc_95 - perc_05
                   )
-
-
-temp_median_by_site <- tapply(combined$temp,INDEX=as.factor(combined$site),FUN=median)
-temp_mean_by_site <- tapply(combined$temp,INDEX=as.factor(combined$site),FUN=mean)
-temp_95_by_site     <- tapply(combined$temp,INDEX=as.factor(combined$site),FUN=quantile,0.95)
-temp_05_by_site     <- tapply(combined$temp,INDEX=as.factor(combined$site),FUN=quantile,0.05)
-temp_range_90       <- temp_95_by_site - temp_05_by_site
 
 # get daily extremes
 site_date_temp <- combined[,c("site","date","temp")]
@@ -93,28 +86,42 @@ daily_stats <- ddply(
               .data = site_date_temp, 
               .variables = c("site","date"),
               .fun=summarize,
-              N = length(date),
               max_temp = max(temp),
               min_temp = min(temp),
               hours_above_32 = 1.5 * length(which(temp>32)),
               .parallel = F
             )
 
+stats_from_daily <- ddply(
+            .data = daily_stats, 
+            .variables = c("site"),
+            .fun=summarize,
+            N = length(date),
+            daily_max_98 = quantile(max_temp,0.98),
+            daily_min_02 = quantile(min_temp,0.02),
+            .parallel = F
+          )
+
+
 daily_max_by_site <- dcast(daily_stats, date ~ site, value.var="max_temp")
 daily_min_by_site <- dcast(daily_stats, date ~ site, value.var="min_temp")
 
-rm(site_date_temp)
+rm(site_date_temp, file, file_pattern, files, date_origin, internalName, serialNo, site, button_data, site_rep)
 
 # plots
 windows()
 par(mfrow=c(2,2))
 boxplot(temp ~ site,data=combined,cex.axis=0.8,notch=T,range=1)
 
-
-plot(button_data[,c("time_in_hours","temp")],pch=20)
+# plot temperatures by hour
+plot(combined[,c("time_in_hours","temp")],pch=20)
 points(median_temp_by_hour$time,median_temp_by_hour$median_temp,col="red",pch=20,cex=2)
 points(mean_temp_by_hour$time,mean_temp_by_hour$mean_temp,col="blue",pch=20,cex=2)
 
+# plot daily maxima by site
+boxplot(max_temp ~ site,data=daily_stats,cex.axis=0.8,notch=T,range=0.01)
+plot(stats_from_daily$site,stats_from_daily$daily_max_98,col="red",add=T,axes=F)
 
-
-
+# plot daily minima by site
+boxplot(min_temp ~ site,data=daily_stats,cex.axis=0.8,notch=T,range=0.01)
+plot(stats_from_daily$site,stats_from_daily$daily_min_02,col="blue",add=T,axes=F)
