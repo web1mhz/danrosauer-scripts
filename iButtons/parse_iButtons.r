@@ -1,12 +1,23 @@
 # script to read the iButton data
 
-setwd("~/Dropbox/ARC Laureate/iButtons/lawnhillibuttons")
+#setwd("~/Dropbox/ARC Laureate/iButtons/lawnhillibuttons")
+setwd("//wallace.uds.anu.edu.au/shared data/Research/EEG/Moritz Lab/Dan/TempLogging/Kimberley")
 library(plyr)
 library(stringr)
+library(reshape2)
 
 rm(list=ls())
 
-file_pattern <- "LawnHill site"
+toMonthNumber <- function(textDate) {
+  return(as.numeric(format(as.Date(daily_stats$date), format="%m")))
+}
+
+#file_pattern <- "LawnHill site"
+file_pattern <- "Kimberley site "
+
+start_date <- as.Date("1/7/13", "%d/%m/%y")  # remove data before this date
+end_date <- as.Date("5/7/14", "%d/%m/%y")  # remove data before this date
+
 files <- list.files(path="./",pattern = file_pattern, recursive = FALSE,ignore.case = TRUE, include.dirs = FALSE)
 
 combined <- data.frame("site"=character(),"timecode"=numeric(),"temp"=numeric(),"date"=numeric(), "time_in_hours"=numeric(), "first_date"=numeric(),"last_date"=numeric(), "serial_no"=character(),"internalName"=character(),stringsAsFactors=F)
@@ -40,9 +51,9 @@ for (file in files) {
   button_data$time_in_hours <- round((button_data$timecode %% 1) * 24,2)  
   
   # remove data before placement
-  button_data <- button_data[button_data$date >= as.Date("30/4/13", "%d/%m/%y"),]
+  button_data <- button_data[button_data$date >= start_date,]
   # and after collection
-  button_data <- button_data[button_data$date < as.Date("16/4/14", "%d/%m/%y"),]
+  button_data <- button_data[button_data$date < end_date,]
   
   first <- as.Date(min(button_data$timecode),date_origin)
   last  <- as.Date(max(button_data$timecode),date_origin)
@@ -83,24 +94,39 @@ site_date_temp <- combined[,c("site","date","temp")]
 site_date_temp$date <- as.factor(site_date_temp$date)
 
 daily_stats <- ddply(
-              .data = site_date_temp, 
-              .variables = c("site","date"),
-              .fun=summarize,
-              max_temp = max(temp),
-              min_temp = min(temp),
-              hours_above_32 = 1.5 * length(which(temp>32)),
-              .parallel = F
-            )
+  .data = site_date_temp, 
+  .variables = c("site","date"),
+  .fun=summarize,
+  max_temp = max(temp),
+  min_temp = min(temp),
+  hours_above_32 = 1.5 * length(which(temp>32)),
+  hours_below_20 = 1.5 * length(which(temp<20)),
+  .parallel = F
+)
+
+daily_stats$month <- toMonthNumber(daily_stats$date)
 
 stats_from_daily <- ddply(
-            .data = daily_stats, 
-            .variables = c("site"),
-            .fun=summarize,
-            N = length(date),
-            daily_max_98 = quantile(max_temp,0.98),
-            daily_min_02 = quantile(min_temp,0.02),
-            .parallel = F
-          )
+  .data = daily_stats, 
+  .variables = c("site"),
+  .fun=summarize,
+  N = length(date),
+  daily_max_98 = quantile(max_temp,0.98),
+  daily_min_02 = quantile(min_temp,0.02),
+  .parallel = F
+)
+
+monthly_stats <- ddply(
+  .data = daily_stats, 
+  .variables = c("site","month"),
+  .fun=summarize,
+  N = length(date),
+  mean_daily_max = mean(max_temp),
+  mean_daily_min = mean(min_temp),
+  mean_hours_above_32 = mean(hours_above_32),
+  mean_hours_below_20 = mean(hours_below_20),
+  .parallel = F
+)
 
 
 daily_max_by_site <- dcast(daily_stats, date ~ site, value.var="max_temp")
@@ -108,20 +134,53 @@ daily_min_by_site <- dcast(daily_stats, date ~ site, value.var="min_temp")
 
 rm(site_date_temp, file, file_pattern, files, date_origin, internalName, serialNo, site, button_data, site_rep)
 
-# plots
+
+############### PLOTS ###############
+
 windows()
 par(mfrow=c(2,2))
-boxplot(temp ~ site,data=combined,cex.axis=0.8,notch=T,range=1)
+
+boxplot(temp ~ site,data=combined,cex.axis=0.8,notch=T,range=1,main="Lawn Hill temperature range by site",xlab="Site",ylab="Temp")
 
 # plot temperatures by hour
-plot(combined[,c("time_in_hours","temp")],pch=20)
+plot(combined[,c("time_in_hours","temp")],pch=20,xlab="Time of day",ylab="Temp",main="Lawn Hill temperature range by time of day")
 points(median_temp_by_hour$time,median_temp_by_hour$median_temp,col="red",pch=20,cex=2)
-points(mean_temp_by_hour$time,mean_temp_by_hour$mean_temp,col="blue",pch=20,cex=2)
+#points(mean_temp_by_hour$time,mean_temp_by_hour$mean_temp,col="blue",pch=20,cex=2)
 
 # plot daily maxima by site
-boxplot(max_temp ~ site,data=daily_stats,cex.axis=0.8,notch=T,range=0.01)
+boxplot(max_temp ~ site,data=daily_stats,cex.axis=0.8,notch=T,range=0.01,xlab="Time of day",ylab="Daily max temp",main="Lawn Hill daily maximum temperature")
 plot(stats_from_daily$site,stats_from_daily$daily_max_98,col="red",add=T,axes=F)
 
 # plot daily minima by site
-boxplot(min_temp ~ site,data=daily_stats,cex.axis=0.8,notch=T,range=0.01)
+boxplot(min_temp ~ site,data=daily_stats,cex.axis=0.8,notch=T,range=0.01,xlab="Time of day",ylab="Daily min temp",main="Lawn Hill daily minimum temperature")
 plot(stats_from_daily$site,stats_from_daily$daily_min_02,col="blue",add=T,axes=F)
+
+# a new plot for temperatures above a threshold
+windows()
+monthly_stats_above <- monthly_stats[,c("site","month","mean_hours_above_32")]
+monthly_matrix   <- acast(monthly_stats_above, site ~ month, value.var="mean_hours_above_32")
+
+monthly_stats_below <- monthly_stats[,c("site","month","mean_hours_below_20")]
+monthly_matrix      <- acast(monthly_stats_above, site ~ month, value.var="mean_hours_above_32")
+
+sites <- c(12,9,3,4) # row numbers of  the sites in the barplot
+
+barplot(height=monthly_matrix[sites,],beside=T,col=rainbow(length(sites)), 
+        xlab="Month", cex.lab=1.5, ylab="Daily hours above 32 degrees")
+ymax <- max(monthly_matrix[sites,])
+legend(15,ymax*.98,fill=rainbow(length(sites)),legend=row.names(monthly_matrix)[sites],cex=1.5)
+
+# a new plot for temperatures below a threshold
+windows()
+monthly_stats_below <- monthly_stats[,c("site","month","mean_hours_below_20")]
+monthly_matrix   <- acast(monthly_stats_below, site ~ month, value.var="mean_hours_belwo_20")
+
+monthly_stats_below <- monthly_stats[,c("site","month","mean_hours_below_20")]
+monthly_matrix      <- acast(monthly_stats_below, site ~ month, value.var="mean_hours_below_20")
+
+sites <- c(12,9,3) # row numbers of  the sites in the barplot
+
+barplot(height=monthly_matrix[sites,],beside=T,col=rainbow(length(sites)), 
+        xlab="Month", cex.lab=1.5, ylab="Daily hours below 20 degrees")
+ymax <- max(monthly_matrix[sites,])
+legend(2,ymax*.98,fill=rainbow(length(sites)),legend=row.names(monthly_matrix)[sites],cex=1.5)
