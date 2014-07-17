@@ -1,31 +1,34 @@
 
 rm(list=ls())
+gc()
 
 library(SDMTools)
 library(raster)
 
 # parameters #############################################################
-input.dir   = 'C:/Users/u3579238/Work/Phylofest/Models/combined/lineage_models_aligned_rf_strict/'; setwd(input.dir)
-output.dir  = 'C:/Users/u3579238/Work/Refugia/Results/outputs_11Jun'
-template_ext ='C:/Users/u3579238/GISData/EnvironmentGrids/AusGDMGrids/ForMaxent/bio1.asc'
+input.dir     <- 'C:/Users/u3579238/Work/Phylofest/Models/combined/lineage_models_aligned_rf_strict/'; setwd(input.dir)
+output.dir    <- 'C:/Users/u3579238/Work/Refugia/Results/outputs_jul2014'
+template_ext  <- 'C:/Users/u3579238/GISData/EnvironmentGrids/AusGDMGrids/ForMaxent/bio1.asc'
 base_path     <- 'C:/Users/u3579238/Work/Refugia/'
 results.dir   <- paste(base_path,'Results/',sep='')
 file.pattern  <- '.+asc$'  #regex
 threshold     <- 0.9
 
-region_lat_boundaries <- c(-9.7,-14.85,-19.6,-23.4,-32.44, -44.3)
+region_lat_boundaries <- c(-9.75,-14.85,-19.6,-23.4,-32.44, -44.3)
+region_names <- c("ALL","CYP","AWT","MEQ","CEC","SEA")
 ##########################################################################
 
 regions <- data.frame()
 
 i <- 1
-regions[i,"region"]        <- 'ALL'
-regions[i,"veg_grid_coarse"]      <- paste(base_path,'Stability/NVIS/ALL_rainforest.asc',sep='')
+region                     <- region_names[i]
+regions[i,"region"]        <- region
+regions[i,"veg_grid_coarse"]      <- paste(base_path,'Stability/NVIS/',region,'_rainforest.asc',sep='')
 regions[i,"veg_grid_fine"] <- paste(base_path,'Stability/NVIS/nvis4_1_aust_mvs_pre_geo01_rf_only.asc',sep='')
 regions[i,"model.dir"]     <- paste(base_path,'Stability/',regions[i,"region"],'_RF/',sep='')
-regions[i,"stabil_static"] <- paste(regions[i,"model.dir"],'stability/static.sum.cost.asc',sep='')
-regions[i,"stabil_10m"]    <- paste(regions[i,"model.dir"],'stability/shift.10.asc',sep='')
-regions[i,"now_mod"]       <- paste(regions[i,"model.dir"],'maxent.output/000.asc',sep='')
+regions[i,"stabil_static"] <- paste(regions[i,"model.dir"],'stability.topo.buf200km/static.sum.cost.asc',sep='')
+regions[i,"stabil_10m"]    <- paste(regions[i,"model.dir"],'stability.topo.buf200km/shift.10.asc',sep='')
+regions[i,"now_mod"]       <- paste(regions[i,"model.dir"],'maxent.output.topo.buf200km/000.asc',sep='')
 
 diversities <- data.frame()
 j <- 1
@@ -140,7 +143,7 @@ lineage_ranges_proportion <- lineage_ranges[,3:7]
 lineage_ranges_proportion <- round(lineage_ranges_proportion / lineage_ranges$range,2)
 lineage_ranges_proportion <- cbind(lineage_ranges[,1:2],lineage_ranges_proportion)
 lineage_ranges_proportion$endemic <- apply(lineage_ranges_proportion[,3:7],1,max)==1
-#lineage_ranges_proportion[lineage_ranges_proportion$endemic==TRUE,"end_region"] <- 
+
 for (row in 1:nrow(lineage_ranges_proportion)) {
   region <- which(lineage_ranges_proportion[row,3:7]==1)
   if (length(region) > 0) {
@@ -166,7 +169,7 @@ lineage_ranges_proportion <- lineage_ranges[,3:7]
 lineage_ranges_proportion <- round(lineage_ranges_proportion / lineage_ranges$range,2)
 lineage_ranges_proportion <- cbind(lineage_ranges[,1:2],lineage_ranges_proportion)
 lineage_ranges_proportion$endemic <- apply(lineage_ranges_proportion[,3:7],1,max)==1
-lineage_ranges_proportion[lineage_ranges_proportion$endemic==TRUE,"end_region"] <- 
+lineage_ranges_proportion[,"end_region"] <- 0
 for (row in 1:nrow(lineage_ranges_proportion)) {
   region <- which(lineage_ranges_proportion[row,3:7]==1)
   if (length(region) > 0) {
