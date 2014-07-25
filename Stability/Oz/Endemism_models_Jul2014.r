@@ -2,7 +2,9 @@
 rm(list=ls())
 
 library(SDMTools)
-library(relaimpo)
+library(raster)
+#library(relaimpo)
+library(glmulti)
 
 # first a function - main script follows below
 glm_process = function( result_frame,
@@ -74,6 +76,10 @@ logistic_threshold <- 0.95  # for a logistic model to predict membership of top 
 do_spatial_LM <- FALSE
 spatial_LM_radius <- 100
 
+# whether to do Delta AIC table and glmulti
+do_AIC <- FALSE
+do_glmulti <- TRUE
+
 i <- 1
 regions[i,"region"]        <- 'ALL'
 regions[i,"veg_grid"]      <- paste(base_path,'Stability/NVIS/ALL_rainforest.asc',sep='')
@@ -122,7 +128,12 @@ regions[i,"stabil_static"] <- paste(regions[i,"model.dir"],'stability.topo.buf20
 regions[i,"stabil_10m"]    <- paste(regions[i,"model.dir"],'stability.topo.buf200km/shift.10.asc',sep='')
 regions[i,"now_mod"]       <- paste(regions[i,"model.dir"],'maxent.output.topo.buf200km/000.asc',sep='')
 
-diversities <- data.frame(taxon="lizardfrog",level="lineage", metric="endemism", grid="reptfrog_end_lin_25Sep_thresh_01.asc",stringsAsFactors = F)
+diversities <- data.frame(taxon="lizardfrog",
+                          level="lineage", 
+                          metric="endemism", 
+                          grid="reptfrog_end_lin_25Sep_thresh_01.asc",
+                          transform="log",
+                          stringsAsFactors = F)
 j <- 2
 diversities[j,1:4] <- c("lizardfrog","lineage","richness","reptfrog_rich_lin_25Sep_thresh_01.asc")
 j <- 3
@@ -145,9 +156,10 @@ if (do_spatial_LM) {
   library(spdep)
 }
 
-
 #Loop through each region, and within it, each diversity metric
 for (i in 1:nrow(regions)) {
+  
+  # for the all region model, assign region sizes to cells
 
   #define some basic data
   rf.ras <- raster(regions$veg_grid[i])# read in the vegetation grid
@@ -164,20 +176,57 @@ for (i in 1:nrow(regions)) {
   
   j=1 # for now only do lineage endemism
   #for (j in 1:nrow(diversities)) {
-    
+  
     #load the diversity result at 0.01 degree resolution and resample to match stability
     div.ras     <-  raster(paste(results.dir,diversities$grid[j],sep=''))
     div_resample.ras <- resample(div.ras,stabil_static.ras,method="bilinear")
     div_resample.asc <- asc.from.raster(div_resample.ras)
     
-    pos_rf = as.data.frame(which(is.finite(rf.asc),arr.ind=TRUE)) #get all points that have data
+    #create pos_rf the table of grid cell values for rainforest
+    pos_rf <- as.data.frame(which(is.finite(rf.asc),arr.ind=TRUE)) #get all points that have data
+
+    xy_rf <- getXYcoords(rf.asc)
+    pos_rf$long  <- xy_rf$x[pos_rf$row]
+    pos_rf$lat  <- xy_rf$y[pos_rf$col]
+    rm(xy_rf)
+  
     pos_rf$rf = rf.asc[cbind(pos_rf$row,pos_rf$col)]            #append the vegetation data
-    pos_rf$stabil_static = stabil_static.asc[cbind(pos_rf$row,pos_rf$col)] #append the stability data
-    pos_rf$stabil_10m = stabil_10m.asc[cbind(pos_rf$row,pos_rf$col)] #append the stability data
-    pos_rf$now_mod = now_mod.asc[cbind(pos_rf$row,pos_rf$col)] #append the stability data
-    pos_rf$div = div_resample.asc[cbind(pos_rf$row,pos_rf$col)] #append the diversity data
     pos_rf = pos_rf[which(pos_rf$rf==1),]  # filter to rainforest areas
+    pos_rf$div = div_resample.asc[cbind(pos_rf$row,pos_rf$col)] #append the diversity data
     pos_rf = pos_rf[which(pos_rf$div > 0),]  # filter to areas with a diversity score
+    
+    # add the predictors based on rainforest niche models
+    pos_rf$stabil_static = stabil_static.asc[cbind(pos_rf$row,pos_rf$col)] #append the static stability scores
+    pos_rf$stabil_10m = stabil_10m.asc[cbind(pos_rf$row,pos_rf$col)] #append the dynamic stability scores
+    pos_rf$now_mod = now_mod.asc[cbind(pos_rf$row,pos_rf$col)] #append the current rainforest SDM
+  
+    # add other predictors
+    predictors <- data.frame(name="bio1",description="mean annual temperature",path="C:/Users/u3579238/GISData/EnvironmentGrids/AusGDMGrids/AsciiGrids/bioclim/bio01.asc",resample=TRUE,stringsAsFactors = F)
+    predictors[2,] <- c("bio12","annual precipitation","C:/Users/u3579238/GISData/EnvironmentGrids/AusGDMGrids/AsciiGrids/bioclim/bio12.asc",TRUE)
+    predictors[3,] <- c("bio17","dry quarter precipitation","C:/Users/u3579238/GISData/EnvironmentGrids/AusGDMGrids/AsciiGrids/bioclim/bio17.asc",TRUE)
+    predictors[4,] <- c("roughness","topographic complexity (SD of elevation from 9 second DEM)","C:/Users/u3579238/Work/Refugia/Results/elev_sd.asc",FALSE)
+    predictors[5,] <- c("region_area","number of pixels in each rainforest region","C:/Users/u3579238/Work/Refugia/Results/rainforest_region_ranges.asc",FALSE)
+    # region size
+    # patch size
+    
+    for (p in 1:nrow(predictors) ) {
+      path <- predictors$path[p]
+      env.ras <- raster(path)
+      if (predictors$resample[p]) {
+        env.ras <- resample(env.ras,stabil_static.ras,method="bilinear")
+        cat(predictors[p,"name"], "done\n")
+      }
+      
+      pos_rf[,predictors$name[p]] <- extract(env.ras,pos_rf[,c("long","lat")])
+    }
+
+    # transform the response variable if needed (as set in the diversities data frame)
+    if (diversities[j,"transform"] == "log") {
+      pos_rf$div <- log(pos_rf$div)
+    }
+  
+    # rescale the predictors - KEEP THE COLUMN NUMBERS CORRECT
+    pos_rf[,7:13] <- scale(pos_rf[,7:13])
     
     # add a binary variable for membership of top class
     thresh <- quantile(pos_rf$div,logistic_threshold)
@@ -193,115 +242,209 @@ for (i in 1:nrow(regions)) {
     }
   
     n <- nrow(pos_rf)
-    
-    # fit models
-    k <- k+1
-    result_frame[k,"region"]  <- regions$region[i]
-    result_frame$response_description[k] <- paste(diversities[j,1],diversities[j,2],diversities[j,3])
-    result_frame$predictor_description[k] <- "Stability static"
-    result_frame[k,"n"]       <- n
-    result_frame <- glm_process(result_frame,
-                                model_number=k,
-                                predictor_text="stabil_static",
-                                response_text = "div",
-                                response_text_logistic="div_binary",
-                                do_spatial_LM = do_spatial_LM,
-                                weight_list = weight_list,
-                                do_logistic=do_logistic,
-                                the_data = pos_rf
-                                )
-    
-    k <- k+1
-    result_frame[k,"region"] <- regions$region[i]
-    result_frame$response_description[k] <- paste(diversities[j,1],diversities[j,2],diversities[j,3])
-    result_frame$predictor_description[k] <- "Stability 10m/yr"
-    result_frame[k,"n"]       <- n  
-    result_frame <- glm_process(result_frame,
-                                model_number=k,
-                                predictor_text="stabil_10m",
-                                response_text = "div",
-                                response_text_logistic="div_binary",
-                                do_spatial_LM= do_spatial_LM,
-                                do_logistic=do_logistic,
-                                the_data = pos_rf
-    )
-    
-    
-    k <- k+1
-    result_frame[k,"region"] <- regions$region[i]
-    result_frame$response_description[k] <- paste(diversities[j,1],diversities[j,2],diversities[j,3])
-    result_frame$predictor_description[k] <- "RF suitability now"
-    result_frame[k,"n"]       <- n
-    result_frame <- glm_process(result_frame,
-                                model_number=k,
-                                predictor_text="now_mod",
-                                response_text = "div",
-                                response_text_logistic="div_binary",
-                                do_spatial_LM= do_spatial_LM,
-                                do_logistic=do_logistic,
-                                the_data = pos_rf
-    )
+    if (do_AIC) {
+      first_k <- k+1  # get the starting row for the set of models to calculate delta AIC
+      
+      # fit models
+      k <- k+1
+      result_frame[k,"region"]  <- regions$region[i]
+      result_frame$response_description[k] <- paste(diversities[j,1],diversities[j,2],diversities[j,3])
+      result_frame$predictor_description[k] <- "Stability static"
+      result_frame[k,"n"]       <- n
+      result_frame <- glm_process(result_frame,
+                                  model_number=k,
+                                  predictor_text="stabil_static",
+                                  response_text = "div",
+                                  response_text_logistic="div_binary",
+                                  do_spatial_LM = do_spatial_LM,
+                                  weight_list = weight_list,
+                                  do_logistic=do_logistic,
+                                  the_data = pos_rf
+                                  )
+      
+      k <- k+1
+      result_frame[k,"region"] <- regions$region[i]
+      result_frame$response_description[k] <- paste(diversities[j,1],diversities[j,2],diversities[j,3])
+      result_frame$predictor_description[k] <- "Stability 10m/yr"
+      result_frame[k,"n"]       <- n  
+      result_frame <- glm_process(result_frame,
+                                  model_number=k,
+                                  predictor_text="stabil_10m",
+                                  response_text = "div",
+                                  response_text_logistic="div_binary",
+                                  do_spatial_LM= do_spatial_LM,
+                                  do_logistic=do_logistic,
+                                  the_data = pos_rf
+      )
+      
+      k <- k+1
+      result_frame[k,"region"] <- regions$region[i]
+      result_frame$response_description[k] <- paste(diversities[j,1],diversities[j,2],diversities[j,3])
+      result_frame$predictor_description[k] <- "Current rainforest suitability"
+      result_frame[k,"n"]       <- n  
+      result_frame <- glm_process(result_frame,
+                                  model_number=k,
+                                  predictor_text="now_mod",
+                                  response_text = "div",
+                                  response_text_logistic="div_binary",
+                                  do_spatial_LM= do_spatial_LM,
+                                  do_logistic=do_logistic,
+                                  the_data = pos_rf
+      )
+        
+      k <- k+1
+      result_frame[k,"region"] <- regions$region[i]
+      result_frame$response_description[k] <- paste(diversities[j,1],diversities[j,2],diversities[j,3])
+      result_frame$predictor_description[k] <- "Annual Mean Temp"
+      result_frame[k,"n"]       <- n
+      result_frame <- glm_process(result_frame,
+                                  model_number=k,
+                                  predictor_text="bio1",
+                                  response_text = "div",
+                                  response_text_logistic="div_binary",
+                                  do_spatial_LM= do_spatial_LM,
+                                  do_logistic=do_logistic,
+                                  the_data = pos_rf
+      )
+      
+      k <- k+1
+      result_frame[k,"region"] <- regions$region[i]
+      result_frame$response_description[k] <- paste(diversities[j,1],diversities[j,2],diversities[j,3])
+      result_frame$predictor_description[k] <- "Annual precipitation"
+      result_frame[k,"n"]       <- n
+      result_frame <- glm_process(result_frame,
+                                  model_number=k,
+                                  predictor_text="bio12",
+                                  response_text = "div",
+                                  response_text_logistic="div_binary",
+                                  do_spatial_LM= do_spatial_LM,
+                                  do_logistic=do_logistic,
+                                  the_data = pos_rf
+      )
+      
+      k <- k+1
+      result_frame[k,"region"] <- regions$region[i]
+      result_frame$response_description[k] <- paste(diversities[j,1],diversities[j,2],diversities[j,3])
+      result_frame$predictor_description[k] <- "Driest qtr precipitation"
+      result_frame[k,"n"]       <- n
+      result_frame <- glm_process(result_frame,
+                                  model_number=k,
+                                  predictor_text="bio17",
+                                  response_text = "div",
+                                  response_text_logistic="div_binary",
+                                  do_spatial_LM= do_spatial_LM,
+                                  do_logistic=do_logistic,
+                                  the_data = pos_rf
+      )
+      
+      k <- k+1
+      result_frame[k,"region"] <- regions$region[i]
+      result_frame$response_description[k] <- paste(diversities[j,1],diversities[j,2],diversities[j,3])
+      result_frame$predictor_description[k] <- "roughness"
+      result_frame[k,"n"]       <- n
+      result_frame <- glm_process(result_frame,
+                                  model_number=k,
+                                  predictor_text="roughness",
+                                  response_text = "div",
+                                  response_text_logistic="div_binary",
+                                  do_spatial_LM= do_spatial_LM,
+                                  do_logistic=do_logistic,
+                                  the_data = pos_rf
+      )
+      
+      k <- k+1
+      result_frame[k,"region"] <- regions$region[i]
+      result_frame$response_description[k] <- paste(diversities[j,1],diversities[j,2],diversities[j,3])
+      result_frame$predictor_description[k] <- "region area"
+      result_frame[k,"n"]       <- n
+      result_frame <- glm_process(result_frame,
+                                  model_number=k,
+                                  predictor_text="rehion_area",
+                                  response_text = "div",
+                                  response_text_logistic="div_binary",
+                                  do_spatial_LM= do_spatial_LM,
+                                  do_logistic=do_logistic,
+                                  the_data = pos_rf
+      )
+      
+      k <- k+1
+      result_frame[k,"region"] <- regions$region[i]
+      result_frame$response_description[k] <- paste(diversities[j,1],diversities[j,2],diversities[j,3])
+      result_frame$predictor_description[k] <- "RF suitability now + Stability static"
+      result_frame[k,"n"]       <- n
+      result_frame <- glm_process(result_frame,
+                                  model_number=k,
+                                  predictor_text="now_mod + stabil_static",
+                                  response_text = "div",
+                                  response_text_logistic="div_binary",
+                                  do_spatial_LM= do_spatial_LM,
+                                  do_logistic=do_logistic,
+                                  the_data = pos_rf
+      )
+      
+      k <- k+1
+      result_frame[k,"region"] <- regions$region[i]
+      result_frame$response_description[k] <- paste(diversities[j,1],diversities[j,2],diversities[j,3])
+      result_frame$predictor_description[k] <- "RF suitability now + Stability 10m yr"
+      result_frame[k,"n"]       <- n
+      result_frame <- glm_process(result_frame,
+                                  model_number=k,
+                                  predictor_text="now_mod + stabil_10m",
+                                  response_text = "div",
+                                  response_text_logistic="div_binary",
+                                  do_spatial_LM= do_spatial_LM,
+                                  do_logistic=do_logistic,
+                                  the_data = pos_rf
+      )
+      
+      # calculate delta AIC
+      records_compare <- first_k:k
+      minAIC <- min(result_frame[records_compare,"glm_aic"])
+      result_frame[records_compare,"glm_delta_aic"] <- result_frame[records_compare,"glm_aic"] - minAIC
+      minAIC <- min(result_frame[records_compare,"glm_logistic_aic"])
+      result_frame[records_compare,"glm_logistic_delta_aic"] <- result_frame[records_compare,"glm_logistic_aic"] - minAIC
+      
+    }
   
-  k <- k+1
-  result_frame[k,"region"] <- regions$region[i]
-  result_frame$response_description[k] <- paste(diversities[j,1],diversities[j,2],diversities[j,3])
-  result_frame$predictor_description[k] <- "RF suitability now + Stability static"
-  result_frame[k,"n"]       <- n
-  result_frame <- glm_process(result_frame,
-                              model_number=k,
-                              predictor_text="now_mod + stabil_static",
-                              response_text = "div",
-                              response_text_logistic="div_binary",
-                              do_spatial_LM= do_spatial_LM,
-                              do_logistic=do_logistic,
-                              the_data = pos_rf
-  )
-  
-  k <- k+1
-  result_frame[k,"region"] <- regions$region[i]
-  result_frame$response_description[k] <- paste(diversities[j,1],diversities[j,2],diversities[j,3])
-  result_frame$predictor_description[k] <- "RF suitability now + Stability 10m yr"
-  result_frame[k,"n"]       <- n
-  result_frame <- glm_process(result_frame,
-                              model_number=k,
-                              predictor_text="now_mod + stabil_10m",
-                              response_text = "div",
-                              response_text_logistic="div_binary",
-                              do_spatial_LM= do_spatial_LM,
-                              do_logistic=do_logistic,
-                              the_data = pos_rf
-  )
-  #}
+  if (do_glmulti) {
+    
+    # automated predictor selection
+    formula <- "div~stabil_static+stabil_10m+now_mod+bio1+bio12+bio17+roughness+region_area"
+    fullGLM <- glm(data=pos_rf, formula=formula)
+    
+    for (model_size in 1:6) {
+      glmulti_res <- glmulti(y=fullGLM,level=1, maxsize=model_size, crit="aicc", method="h",confsetsize=50,report=T)
+      glmulti_sum <- summary(glmulti_res)
+      
+      # fit the best model
+      bestGLM <- glm(data=pos_rf, formula=glmulti_sum$bestmodel)
+      bestGLM_r2 <- (bestGLM$null.deviance - bestGLM$deviance) / bestGLM$null.deviance
+      bestGLM_r2 <- round(bestGLM_r2,3)
+      
+      cat("\n**********************************\nBest",model_size,"predictor model of",diversities[j,1],diversities[j,2],diversities[j,3],"for",regions[i,"region"])
+      cat("\nBest model formula:",glmulti_sum$bestmodel,
+          "\nBest model AICC:   ",glmulti_sum$bestic,
+          "\nBest model r^2:    ",bestGLM_r2,"\n**********************************\n")
+
+      print(summary(bestGLM))
+    }
+  }
 }
 
-write.csv(output,paste(results.dir,"Stability_end_rich_cor_with_frogs_15Oct.csv",sep=""))
+write.csv(result_frame,paste(results.dir,"Stability_end_cor_18Jul.csv",sep=""),row.names=F)
 
-# # now plot current suitability v stability (past suitability), coloured by endemism
-# library(maptools)
-# library(classInt)
-# windows()
-# class_count <- 12
-# my.class <- classIntervals(pos_rf$lin_end,n=class_count,style="quantile", digits=2)
-# my.class_breaks <- round(my.class[[2]],4)
-# my.pal <- c("darkblue","green2","yellow","red")
-# my.col <-findColours(my.class,my.pal)
-# legend_cols <- attr(my.col,"palette")
-# plot(pos_rf$now_mod,pos_rf$stabil_static,xlab="Current suitability",ylab="Stability",col=my.col)
-# legend(x="topleft",legend=my.class_breaks[1:class_count+1],fill=legend_cols)
-# 
-# # now plot static stability v shifting stability 10m, coloured by endemism
-# library(maptools)
-# library(classInt)
-# windows()
-# class_count <- 12
-# my.class <- classIntervals(pos_rf$lin_end,n=class_count,style="quantile", digits=2)
-# my.class_breaks <- round(my.class[[2]],4)
-# my.pal <- c("darkblue","green2","yellow","red")
-# my.col <-findColours(my.class,my.pal)
-# legend_cols <- attr(my.col,"palette")
-# plot(pos_rf$stabil_static,pos_rf$stabil_10m,xlab="Static suitability",ylab="Stability 10m/yr",col=my.col)
-# abline(0,1, lwd=2)
-# legend(x="topleft",legend=my.class_breaks[1:class_count+1],fill=legend_cols)
+# now plot current suitability v stability (past suitability), coloured by endemism
+library(maptools)
+library(classInt)
+windows()
+class_count <- 12
+my.class <- classIntervals(pos_rf$div,n=class_count,style="quantile", digits=2)
+my.class_breaks <- round(my.class[[2]],4)
+my.pal <- c("darkblue","green2","yellow","red")
+my.col <-findColours(my.class,my.pal)
+legend_cols <- attr(my.col,"palette")
+plot(pos_rf$now_mod,pos_rf$stabil_static,xlab="Current suitability",ylab="Stability",col=my.col)
+legend(x="topleft",legend=my.class_breaks[1:class_count+1],fill=legend_cols)
 
-rm(rf.ras, rf.asc, div.ras, div.asc, div_resample.ras, stabil_static.asc, stabil_static.ras)
+rm(rf.ras, rf.asc, div.ras, div_resample.ras, stabil_static.asc, stabil_static.ras)
 
