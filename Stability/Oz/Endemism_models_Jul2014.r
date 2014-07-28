@@ -77,8 +77,9 @@ do_spatial_LM <- FALSE
 spatial_LM_radius <- 100
 
 # whether to do Delta AIC table and glmulti
-do_AIC <- FALSE
+do_AIC     <- FALSE
 do_glmulti <- TRUE
+do_plots   <- FALSE
 
 i <- 1
 regions[i,"region"]        <- 'ALL'
@@ -156,6 +157,14 @@ if (do_spatial_LM) {
   library(spdep)
 }
 
+if (do_glmulti) {
+  # create a result data frame
+  glmulti_blank_results <- data.frame(region="",max_pred=0,AIC=-9999,r2=0,formula="",stringsAsFactors = F)
+  # add predictor columns
+  glmulti_blank_results <- cbind(glmulti_blank_results,data.frame(now_mod=0,stabil_static=0,stabil_10m=0,bio1=0,bio12=0,bio17=0,roughness=0,region_area=0,stringsAsFactors = 0))
+  glmulti_full_results <- glmulti_blank_results[-1,]
+}
+
 #Loop through each region, and within it, each diversity metric
 for (i in 1:nrow(regions)) {
   
@@ -201,12 +210,11 @@ for (i in 1:nrow(regions)) {
     pos_rf$now_mod = now_mod.asc[cbind(pos_rf$row,pos_rf$col)] #append the current rainforest SDM
   
     # add other predictors
-    predictors <- data.frame(name="bio1",description="mean annual temperature",path="C:/Users/u3579238/GISData/EnvironmentGrids/AusGDMGrids/AsciiGrids/bioclim/bio01.asc",resample=TRUE,stringsAsFactors = F)
-    predictors[2,] <- c("bio12","annual precipitation","C:/Users/u3579238/GISData/EnvironmentGrids/AusGDMGrids/AsciiGrids/bioclim/bio12.asc",TRUE)
-    predictors[3,] <- c("bio17","dry quarter precipitation","C:/Users/u3579238/GISData/EnvironmentGrids/AusGDMGrids/AsciiGrids/bioclim/bio17.asc",TRUE)
+    predictors <- data.frame(name="bio1",description="mean annual temperature",path="C:/Users/u3579238/Work/Refugia/Stability/OZ.climates/bioclim/000/bioclim_01.asc",resample=FALSE,stringsAsFactors = F)
+    predictors[2,] <- c("bio12","annual precipitation","C:/Users/u3579238/Work/Refugia/Stability/OZ.climates/bioclim/000/bioclim_12.asc",FALSE)
+    predictors[3,] <- c("bio17","dry quarter precipitation","C:/Users/u3579238/Work/Refugia/Stability/OZ.climates/bioclim/000/bioclim_17.asc",FALSE)
     predictors[4,] <- c("roughness","topographic complexity (SD of elevation from 9 second DEM)","C:/Users/u3579238/Work/Refugia/Results/elev_sd.asc",FALSE)
     predictors[5,] <- c("region_area","number of pixels in each rainforest region","C:/Users/u3579238/Work/Refugia/Results/rainforest_region_ranges.asc",FALSE)
-    # region size
     # patch size
     
     for (p in 1:nrow(predictors) ) {
@@ -226,7 +234,7 @@ for (i in 1:nrow(regions)) {
     }
   
     # rescale the predictors - KEEP THE COLUMN NUMBERS CORRECT
-    pos_rf[,7:13] <- scale(pos_rf[,7:13])
+    pos_rf[,7:14] <- scale(pos_rf[,7:14])
     
     # add a binary variable for membership of top class
     thresh <- quantile(pos_rf$div,logistic_threshold)
@@ -407,44 +415,88 @@ for (i in 1:nrow(regions)) {
     }
   
   if (do_glmulti) {
-    
+        
     # automated predictor selection
-    formula <- "div~stabil_static+stabil_10m+now_mod+bio1+bio12+bio17+roughness+region_area"
+    if (regions$region[i]=="ALL") {
+      formula <- "div~stabil_static+stabil_10m+now_mod+bio1+bio12+bio17+roughness+region_area"
+    } else {
+      formula <- "div~stabil_static+stabil_10m+now_mod+bio1+bio12+bio17+roughness" # don't use region_area predictor for single region models
+    }
     fullGLM <- glm(data=pos_rf, formula=formula)
     
     for (model_size in 1:6) {
-      glmulti_res <- glmulti(y=fullGLM,level=1, maxsize=model_size, crit="aicc", method="h",confsetsize=50,report=T)
-      glmulti_sum <- summary(glmulti_res)
-      
-      # fit the best model
-      bestGLM <- glm(data=pos_rf, formula=glmulti_sum$bestmodel)
-      bestGLM_r2 <- (bestGLM$null.deviance - bestGLM$deviance) / bestGLM$null.deviance
-      bestGLM_r2 <- round(bestGLM_r2,3)
-      
-      cat("\n**********************************\nBest",model_size,"predictor model of",diversities[j,1],diversities[j,2],diversities[j,3],"for",regions[i,"region"])
-      cat("\nBest model formula:",glmulti_sum$bestmodel,
-          "\nBest model AICC:   ",glmulti_sum$bestic,
-          "\nBest model r^2:    ",bestGLM_r2,"\n**********************************\n")
-
-      print(summary(bestGLM))
+      rm(glmulti_res)
+      try(glmulti_res <- glmulti(y=fullGLM,level=1, maxsize=model_size, crit="aicc", method="h",confsetsize=100,report=T))
+      if (exists("glmulti_res")) {
+          
+        glmulti_sum <- summary(glmulti_res)
+              
+        # fit the best model
+        bestGLM <- glm(data=pos_rf, formula=glmulti_sum$bestmodel)
+        bestGLM_r2 <- (bestGLM$null.deviance - bestGLM$deviance) / bestGLM$null.deviance
+        bestGLM_r2 <- round(bestGLM_r2,3)
+        bestGLM_sum <- summary(bestGLM)
+        
+        # store results in the data frame
+        glmulti_new_results <- glmulti_blank_results
+        glmulti_new_results$region[1]      <- regions$region[i]
+        glmulti_new_results$max_pred[1]    <- model_size
+        glmulti_new_results$AIC[1]         <- glmulti_sum$bestic
+        glmulti_new_results$formula[1]     <- glmulti_sum$bestmodel
+        glmulti_new_results$r2[1]          <- bestGLM_r2
+        
+        # get model terms and co-efficents
+        terms <- attributes(bestGLM_sum$terms)$term.labels
+        coef  <- bestGLM_sum$coefficients
+        for (pred in terms) {
+          glmulti_new_results[1,pred] <- round(coef[pred,"Estimate"],4)
+        }
+        
+        glmulti_full_results <- rbind(glmulti_full_results,glmulti_new_results)
+        
+        cat("\n**********************************\nBest",model_size,"predictor model of",diversities[j,1],diversities[j,2],diversities[j,3],"for",regions[i,"region"])
+        cat("\nBest model formula:",glmulti_sum$bestmodel,
+            "\nBest model AICC:   ",glmulti_sum$bestic,
+            "\nBest model r^2:    ",bestGLM_r2,"\n**********************************\n")
+  
+        print(summary(bestGLM))
+      } else {
+        glmulti_new_results             <- glmulti_blank_results
+        glmulti_new_results$formula[1]  <- "FAILED"
+        
+        cat("\n**********************************\nBest",model_size,"predictor model of",diversities[j,1],diversities[j,2],diversities[j,3],"for",regions[i,"region"],
+            "\n **  FAILED  **",
+            "\n**********************************\n")
+            
+      }
     }
   }
 }
 
-write.csv(result_frame,paste(results.dir,"Stability_end_cor_18Jul.csv",sep=""),row.names=F)
+if (do_AIC) {
+  write.csv(result_frame,paste(results.dir,"Stability_end_cor_18Jul.csv",sep=""),row.names=F)
+}
 
-# now plot current suitability v stability (past suitability), coloured by endemism
-library(maptools)
-library(classInt)
-windows()
-class_count <- 12
-my.class <- classIntervals(pos_rf$div,n=class_count,style="quantile", digits=2)
-my.class_breaks <- round(my.class[[2]],4)
-my.pal <- c("darkblue","green2","yellow","red")
-my.col <-findColours(my.class,my.pal)
-legend_cols <- attr(my.col,"palette")
-plot(pos_rf$now_mod,pos_rf$stabil_static,xlab="Current suitability",ylab="Stability",col=my.col)
-legend(x="topleft",legend=my.class_breaks[1:class_count+1],fill=legend_cols)
+if (do_glmulti) {
+  rm(glmulti_blank_results,glmulti_new_results)
+  setwd(results.dir)
+  write.csv(glmulti_full_results,"Stability_end_GLMulti_Jul.csv")
+}
+
+if (do_plots) {
+  # now plot current suitability v stability (past suitability), coloured by endemism
+  library(maptools)
+  library(classInt)
+  windows()
+  class_count <- 12
+  my.class <- classIntervals(pos_rf$div,n=class_count,style="quantile", digits=2)
+  my.class_breaks <- round(my.class[[2]],4)
+  my.pal <- c("darkblue","green2","yellow","red")
+  my.col <-findColours(my.class,my.pal)
+  legend_cols <- attr(my.col,"palette")
+  plot(pos_rf$now_mod,pos_rf$stabil_static,xlab="Current suitability",ylab="Stability",col=my.col)
+  legend(x="topleft",legend=my.class_breaks[1:class_count+1],fill=legend_cols)
+}
 
 rm(rf.ras, rf.asc, div.ras, div_resample.ras, stabil_static.asc, stabil_static.ras)
 
