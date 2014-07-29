@@ -1,11 +1,13 @@
 rm(list=ls())
 
 library(ecodist)
-library(scales)
+library(MASS)
 
 setwd("C:/Users/u3579238/Work/Refugia/Results/outputs_jul2014")
 models <- read.csv("rf_lin_models.csv")
 resolution <- 0.2
+
+border <- "C:/Users/u3579238/GISData/aus5m_coast_no_norfolk.shp"
 
 #strip out empty cells
 models <- models[which(models$total > 0),]
@@ -37,7 +39,6 @@ gc()
 
 clust <- hclust(dist.dist)
 
-
 dist_matrix[which(is.na(dist_matrix[]))] <- 1
 
 my.isoMDS <- isoMDS(dist.dist,k=3)
@@ -64,3 +65,9 @@ my.cols = rgb(my.axes_r)
 windows(5,10)
 main.text <- paste("Lineage turnover \nresolution:",resolution )
 plot(models_grouped$long_group,models_grouped$lat_group,col=my.cols,pch=15,cex=0.8,xlab="longitude",ylab="latitude", main=main.text)
+
+# add a coastline to the map
+library(raster)
+
+border.shp <- shapefile(border)
+plot(border.shp,add=T)
