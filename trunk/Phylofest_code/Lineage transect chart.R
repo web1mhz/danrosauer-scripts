@@ -14,22 +14,76 @@ coords <- function(the.line,n,position){
   return(as.data.frame(cbind(x,y)))
 }
 
+moving_avg <- function(x, n=1, centered=FALSE) {
+  
+  if (centered) {
+    before <- floor  ((n-1)/2)
+    after  <- ceiling((n-1)/2)
+  } else {
+    before <- n-1
+    after  <- 0
+  }
+  
+  # Track the sum and count of number of non-NA items
+  s     <- rep(0, length(x))
+  count <- rep(0, length(x))
+  
+  # Add the centered data 
+  new <- x
+  # Add to count list wherever there isn't a 
+  count <- count + !is.na(new)
+  # Now replace NA_s with 0_s and add to total
+  new[is.na(new)] <- 0
+  s <- s + new
+  
+  # Add the data from before
+  i <- 1
+  while (i <= before) {
+    # This is the vector with offset values to add
+    new   <- c(rep(NA, i), x[1:(length(x)-i)])
+    
+    count <- count + !is.na(new)
+    new[is.na(new)] <- 0
+    s <- s + new
+    
+    i <- i+1
+  }
+  
+  # Add the data from after
+  i <- 1
+  while (i <= after) {
+    # This is the vector with offset values to add
+    new   <- c(x[(i+1):length(x)], rep(NA, i))
+    
+    count <- count + !is.na(new)
+    new[is.na(new)] <- 0
+    s <- s + new
+    
+    i <- i+1
+  }
+  
+  # return sum divided by count
+  s/count
+}
+
+#######################################################
+##############  Main Program Starts Here  #############
+#######################################################
 
 #define directories
-input.dir       <- 'C:/Users/u3579238/Work/AMT/Models/lineage_models/asc_clipped_cube_method/'
-output.dir      <- 'C:/Users/u3579238/Work/AMT/Maps/lineage_models/Heteronotia/'
-file_pattern    <- '[:alnum:]*Heteronotia_b.*asc$'
-group_lin_file  <- 'C:/Users/u3579238/Work/AMT/Models/group_lineage_list.csv'
-preface         <- 'lin_model_'
-suffix          <- ''
+input.dir       <- 'C:/Users/u3579238/Work/Phylofest/Models/combined/lineage_models_aligned_rf_strict/'
+output.dir      <- 'C:/Users/u3579238/Work/Phylofest/Maps/'
+file_pattern    <- '*Saproscincus_r.*asc$'
+#group_lin_file  <- 'C:/Users/u3579238/Work/AMT/Models/group_lineage_list.csv'
 
-lineage_site_file   <- 'C:/Users/u3579238/Work/AMT/Models/lineage_sites/Heteronotia_lin_loc_from_db_18mar14_nth_of_22S.csv'
+smooth_width = 15  # use 0 for no smoothing
+too.low = 0.1
 
-too.low = 0
-
-line_coords <- data.frame(cbind(long=c(133,134),lat=c(-11.5,-22)))
+#line_coords <- data.frame(cbind(long=c(133,134),lat=c(-11.5,-22)))
 #line_coords <- data.frame(cbind(long=c(127.4,118.8),lat=c(-14,-21.8)))
 #line_coords <- data.frame(cbind(long=c(121.8,132.5),lat=c(-19,-19)))
+#line_coords <- data.frame(cbind(long=c(134,130),lat=c(-12.3,-18)))
+line_coords <- data.frame(cbind(long=c(152.92,151.75),lat=c(-26.47,-32.5)))
 
 ####  end of parameters
 
@@ -62,7 +116,7 @@ data <- as.data.frame(1,row.names="myLine")
 the.spatiallinesdf <- SpatialLinesDataFrame(the.spatiallines,data)
 
 #write the line as a shapefile
-#shapefile(the.spatiallinesdf,paste(output.dir,"line3.shp",sep=""),overwrite=T)
+shapefile(the.spatiallinesdf,paste(output.dir,"rosei_line.shp",sep=""),overwrite=T)
 
 lin_line_values <- extract(lin.stack,the.spatiallines)
 lin_line_values <- lin_line_values[[1]]
@@ -70,19 +124,39 @@ lin_line_values <- lin_line_values[[1]]
 #group low scoring lineages as 'other'
 lin_max <- apply(lin_line_values,MARGIN=2,FUN=max,na.rm=T)
 minors <- which(lin_max < too.low)
-main_values <- lin_line_values[,-minors]
+if (length(minors) > 0) {
+  main_values <- lin_line_values[,-minors]
+  other <- apply(lin_line_values[,minors],MARGIN=1,FUN=sum)
+  main_values <- cbind(main_values,other)
+} else {
+  main_values <- lin_line_values[,]
+}
+
 n <- ncol(main_values)
-other <- apply(lin_line_values[,minors],MARGIN=1,FUN=sum)
+
+# smooth the values
+if (smooth_width>0) {
+  main_values_orig <- main_values
+  main_values_smooth <- main_values
+  for (i in 1:n) {
+    main_values_smooth[,i] <- moving_avg(main_values[,i],smooth_width, centered = TRUE)
+  }
+  main_values <- main_values_smooth
+  rm(main_values_smooth)
+}
 
 rows <- nrow(lin_line_values)
 the_coords <- round(coords(the.line,rows,1:rows),3)
-row.names(main_values) <- the_coords[,1]
+row.names(main_values) <- the_coords[,2]  # column 2, to use latitude as the x axis on the plot in this case
 #y_coords <- the_coords[main_values$position,2]
 
-main_values <- cbind(main_values,other)
 main_values <- melt(main_values,varnames=c("position","lineage"))
 
 windows()
-ggplot(main_values, aes(x=position, y=value, fill=lineage)) + geom_area() + ggtitle("Lineage values along a transect")
+title <- "Lineage values along a transect"
+if (smooth_width > 0) {
+  title <- paste(title,"\nsmooth width =",smooth_width)
+}
+ggplot(main_values, aes(x=position, y=value, fill=lineage)) + geom_area() + ggtitle(title) + xlim(line_coords$lat[1],line_coords$lat[2])
 
 
