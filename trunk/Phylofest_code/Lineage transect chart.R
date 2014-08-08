@@ -1,3 +1,5 @@
+
+
 rm(list=ls())
 
 library(raster)
@@ -76,7 +78,7 @@ output.dir      <- 'C:/Users/u3579238/Work/Phylofest/Maps/'
 file_pattern    <- '*Saproscincus_r.*asc$'
 #group_lin_file  <- 'C:/Users/u3579238/Work/AMT/Models/group_lineage_list.csv'
 
-smooth_width = 15  # use 0 for no smoothing
+smooth_width = 12  # use 0 for no smoothing
 too.low = 0.1
 
 #line_coords <- data.frame(cbind(long=c(133,134),lat=c(-11.5,-22)))
@@ -152,11 +154,18 @@ row.names(main_values) <- the_coords[,2]  # column 2, to use latitude as the x a
 
 main_values <- melt(main_values,varnames=c("position","lineage"))
 
-windows()
 title <- "Lineage values along a transect"
 if (smooth_width > 0) {
   title <- paste(title,"\nsmooth width =",smooth_width)
 }
-ggplot(main_values, aes(x=position, y=value, fill=lineage)) + geom_area() + ggtitle(title) + xlim(line_coords$lat[1],line_coords$lat[2])
+
+main_values <- main_values[order(main_values$position,decreasing = F),]
+
+windows(6,12)
+
+my.plot <- ggplot(main_values, aes(x=position, y=value, fill=lineage)) + geom_area() + ggtitle(title) + xlim(min(main_values$position),max(main_values$position)) + coord_flip()
+my.plot <- my.plot + labs(y = "Predicted suitability", x = "Latitude") + theme_bw(base_size = 12) + theme(panel.grid.major = element_blank()) + theme(panel.border = element_blank())
+print(my.plot)
+
 
 
