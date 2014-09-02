@@ -1,15 +1,16 @@
-#drafted by Jeremy VanDerWal ( jjvanderwal@gmail.com ... www.jjvanderwal.com )
+#original version drafted by Jeremy VanDerWal ( jjvanderwal@gmail.com ... www.jjvanderwal.com )
 #GNU General Public License .. feel free to use / distribute ... no warranties
+
 rm(list=ls())
 library(raster)
 
 ################################################################################
 #define directories
-work.dir = 'C:/Users/u3579238/Work/Refugia/Stability/AWT_RF/maxent.output.topo.buf100km/'; setwd(work.dir)
-mxe.dir = 'C:/Users/u3579238/Work/Refugia/Stability/OZ.climates/mxe/'
-maxent.jar = 'C:/Users/u3579238/Work/Refugia/Stability/maxent.jar'
+work.dir            <- 'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/maxent.output_narrow_AMT/'; setwd(work.dir)
+mxe.dir             <- 'C:/Users/u3579238/Work/Refugia/Stability/OZ.climates/mxe/'
+maxent.jar          <- 'C:/Users/u3579238/Work/Refugia/Stability/maxent.jar'
 
-mask_layer_name = 'C:/Users/u3579238/Work/Refugia/Stability/OZ.climates/bioclim/000/AWT_all_rainforest_100km_mask.asc'  #only needed if clipping models to mask
+mask_layer_name     <- 'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/northern_mask.asc'  #only needed if clipping models to mask
 clip_to_mask = TRUE
 
 use_hpc = FALSE # If true, generate hpc shell scripts to run models. If false, run maxent locally, one model at a time (DR 30 Aug 2012)
@@ -31,9 +32,9 @@ model_count = 0
 
 #cycle through the projections
 for (tproj in proj.list) {
-  
+
   if (use_hpc) {
-    
+
     ##create the sh file
     zz = file(paste(tproj,'.sh',sep=''),'w')
     cat('##################################\n',file=zz)
@@ -43,31 +44,35 @@ for (tproj in proj.list) {
     cat('cd ',work.dir,'\n',sep='',file=zz)
     cat('gzip ',tproj,'.asc\n',sep='',file=zz)
     cat('##################################\n',file=zz)
-    close(zz) 
+    close(zz)
     #submit the script
     system(paste('qsub -m n ',tproj,'.sh',sep=''))
-    
+
   } else {
     model_count = model_count+1
-    
+
     cat("\nAbout to project model for year", tproj,"\n")
-    
+
     #Original model projection
-    maxent_call = paste('java -mx1024m -cp ',maxent.jar,' density.Project ',work.dir,'rf.lambdas ',mxe.dir,tproj,' ',work.dir,tproj,'.asc fadebyclamping nowriteclampgrid',sep="")
-    
+    maxent_call = paste('java -mx1024m -cp ',maxent.jar,' density.Project ',work.dir,'area.lambdas ',mxe.dir,tproj,' ',work.dir,tproj,'.asc fadebyclamping nowriteclampgrid',sep="")
+
     #Modified model projection to test a model fitted with a restricted set of predictors
     #maxent_call = paste('java -mx1024m -cp ',maxent.jar,' density.Project ',work.dir,'maxent.output1/rf.lambdas ',mxe.dir,tproj,' ',work.dir,"/maxent.output1/",tproj,'.asc fadebyclamping nowriteclampgrid',sep="")
-    
+
     cat(maxent_call,"\n")
-    
+
     system(maxent_call) #run a model
-    
+
+    model.name <- paste(work.dir,tproj,".asc",sep="")
+    mod.ras <- raster(model.name)
+
     if (clip_to_mask) {
-      model.name <- paste(work.dir,tproj,".asc",sep="")
-      mod.ras <- raster(model.name)
+      mod.ras <- crop(mod.ras,mask.ras)
       mod.ras <- mask(mod.ras,mask.ras)
       writeRaster(mod.ras,model.name,overwrite=TRUE)
     }
   }
+
+  plot(mod.ras,main=tproj)
 }
 
