@@ -43,7 +43,7 @@ for (tproj in proj.list) {
   system(maxent_call, wait=TRUE, invisible=FALSE) #run a model
   
   if (tproj != "000") {
-    file.remove(asc.file.1,asc.file.2, asc.file.old.1, asc.file.old.2)
+    file.remove(asc.file.old.1, asc.file.old.2)
     file.remove(paste(asc.file.1,".gz",sep=""),paste(asc.file.2,".gz",sep=""))
     mxe.old.1 <- paste(mxe.dir, tproj,'/elev_range.mxe',sep="")
     mxe.old.2 <- paste(mxe.dir, tproj,'/slope_median.mxe',sep="")    

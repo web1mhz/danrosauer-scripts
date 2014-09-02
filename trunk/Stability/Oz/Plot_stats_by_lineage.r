@@ -2,8 +2,8 @@
 rm(list=ls())
 
 # parameters #############################################################
-input.dir   = 'C:/Users/u3579238/Work/Refugia/Results/outputs_11Jun'; setwd(input.dir)
-output.dir  = 'C:/Users/u3579238/Work/Refugia/Results/outputs_11Jun'
+input.dir   = 'C:/Users/u3579238/Work/Refugia/Results/outputs_25Sep'; setwd(input.dir)
+output.dir  = 'C:/Users/u3579238/Work/Refugia/Results/outputs_25Sep'
 
 lineage_ranges <- read.csv("lineage_ranges_0.9.csv")
 region_areas   <- read.csv("region_areas.csv")
@@ -111,7 +111,7 @@ text(14,0.97,pos=4,labels="Median",cex=0.9)
 
 lineages <- names(lin_models_occ)[12:ncol(lin_models_occ)]
 windows(8,8)
-plot(0,0,xlim=c(3.2,10.1),ylim=c(0,1),col=NULL,xlab="log Range Size", ylab = "Median Stability") # set up an empty plot
+plot(0,0,xlim=c(3.2,10.1),ylim=c(0,1),col=NULL,xlab="log Range Size", ylab = "Median Stability", main="Median stability by range size") # set up an empty plot
 for (lineage in lineages) {
   cells <- which(lin_models_occ[,lineage]==1)
   range=length(cells)

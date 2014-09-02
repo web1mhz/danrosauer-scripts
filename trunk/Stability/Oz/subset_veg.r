@@ -2,15 +2,16 @@
 
 ################################################################################
 rm(list=ls())
-library(SDMTools, raster)
+library(SDMTools)
+library(raster)
 
 #define directories
-template = 'C:/Users/u3579238/Work/Refugia/Stability/OZ.climates/bioclim/000/landmask.asc'
+template = 'C:/Users/u3579238/Work/Refugia/Stability/OZ.climates/bioclim/000/bioclim_01.asc'
 #veg_grid = 'C:/Users/u3579238/Work/Refugia/Stability/Oz/pre1750_mvg.asc.gz'
 veg_grid = 'C:/Users/u3579238/Work/Refugia/Stability/NVIS/nvis4_1_mvs_pre_geo_4km_rf_only.asc'
-output_suffix = '_all_rainforest'
+output_suffix = '_all_rainforest_100km'
 output_path = 'C:/Users/u3579238/Work/Refugia/Stability/NVIS/'
-buffer_width = 200000 # background region around RF pixels, in metres
+buffer_width = 100000 # background region around RF pixels, in metres
 
 region_lat_boundaries <- c(-9.75,-14.85,-19.6,-23.4,-32.44, -44.3)
 region_names          <- c("CYP","AWT","MEQ","CEC","SEA")
