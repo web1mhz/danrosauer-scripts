@@ -12,13 +12,17 @@ library(SDMTools)
 work.dir            <- 'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/'; setwd(work.dir)
 current.bioclim     <- 'C:/Users/u3579238/Work/Refugia/Stability/OZ.climates/bioclim/000'
 maxent.jar          <- 'C:/Users/u3579238/Work/Refugia/Stability/maxent.jar'
-veg_grid            <- 'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/IBRA_NorthKimberley.asc'
+veg_grid            <- 'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/IBRA_NarrowAMT.asc'
 mask_layer_name     <- veg_grid
-output_folder_name  <- 'maxent.output'
+output_folder_name  <- 'maxent.output_narrow_AMT'
 
 #define some basic data
 mvg.asc  <- read.asc(veg_grid)                 # read in the vegetation grid
 area.asc <- mvg.asc; area.asc[which(is.finite(area.asc) & area.asc!=1)] = 0  #set all other areas != 1 to 0
+
+maxent_threads      <- 9
+
+ymin <- -24
 
 ################################################################################
 #get a subset of the data for occur & background
@@ -28,8 +32,10 @@ pos.subset = pos[which(pos$row %% 2 == 0 & pos$col %% 2 == 0),] #get a subset of
 #pos.subset= pos  #this line is an alternative to the previous, which selects every 2nd cell
 pos.subset = rbind(pos.subset,pos[which(pos$mvg==1),]); pos.subset = unique(pos.subset) #ensure all cells in the target area are included in dataset
 
-# add lat and long columns to pos.subset
-
+# apply a southern limit
+xy <- getXYcoords(area.asc)
+ycoords <- which(xy$y >= ymin)
+pos.subset <- pos.subset[pos.subset$row %in% ycoords,]
 
 #append the current environmental data
 for (tfile in list.files(current.bioclim,pattern='\\.asc.gz',full.name=TRUE)) {
@@ -47,7 +53,7 @@ if (exists("mask_layer_name")) {
 }
 
 #define the occurrences & background ... then write out the data
-occur = data.frame(species='rf',pos.subset[which(pos.subset$mvg==1),])
+occur = data.frame(species='area',pos.subset[which(pos.subset$mvg==1),])
 occur$mvg = NULL #define the occurrences
 bkgd = data.frame(species='bkgd',pos.subset)
 bkgd$mvg=NULL #define the background
@@ -59,4 +65,10 @@ write.csv(bkgd,'bkgd.csv',row.names=FALSE) #write out the background
 #run maxent
 dir.create(output_folder_name)
 sys_command = paste('java -mx2048m -jar ',maxent.jar,' -e bkgd.csv -s occur.csv -o', output_folder_name,'nothreshold nowarnings novisible -P jackknife -r -a') # variant with jacknifing for better info on variable importance
+
+# to run in parallel
+if (maxent_threads > 1) {
+  sys_command <- paste(sys_command, " threads=",maxent_threads,sep="")
+}
+
 system(sys_command)
