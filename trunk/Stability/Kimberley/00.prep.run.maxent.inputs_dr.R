@@ -2,35 +2,41 @@
 #GNU General Public License .. feel free to use / distribute ... no warranties
 
 ################################################################################
+rm (list=ls())
 library(SDMTools)
 
 ################################################################################
 ################################################################################
 
 #define directories
-work.dir'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/'; setwd(work.dir)
-current.bioclim = 'C:/Users/u3579238/Work/Refugia/Stability/OZ.climates/bioclim/000'
-maxent.jar = 'C:/Users/u3579238/Work/Refugia/Stability/maxent.jar'
-veg_grid = 'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/IBRA_NorthKimberley.asc'
-mask_layer_name= veg_grid
-output_folder_name = 'maxent.output.topo.buf100km'
+work.dir            <- 'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/'; setwd(work.dir)
+current.bioclim     <- 'C:/Users/u3579238/Work/Refugia/Stability/OZ.climates/bioclim/000'
+maxent.jar          <- 'C:/Users/u3579238/Work/Refugia/Stability/maxent.jar'
+veg_grid            <- 'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/IBRA_NorthKimberley.asc'
+mask_layer_name     <- veg_grid
+output_folder_name  <- 'maxent.output'
 
 #define some basic data
-mvg.asc = read.asc(veg_grid)                 # read in the vegetation grid
-rf.asc = mvg.asc; rf.asc[which(is.finite(rf.asc) & rf.asc!=1)] = 0  #set all veg != 1 (rainforests) to 0
+mvg.asc  <- read.asc(veg_grid)                 # read in the vegetation grid
+area.asc <- mvg.asc; area.asc[which(is.finite(area.asc) & area.asc!=1)] = 0  #set all other areas != 1 to 0
 
 ################################################################################
 #get a subset of the data for occur & background
 pos = as.data.frame(which(is.finite(mvg.asc),arr.ind=TRUE)) #get all points that have data
-pos$mvg = mvg.asc[cbind(pos$row,pos$col)] #append the vegetation data
+pos$mvg = mvg.asc[cbind(pos$row,pos$col)] #append the area data
 pos.subset = pos[which(pos$row %% 2 == 0 & pos$col %% 2 == 0),] #get a subset of the data as a regular grid of every second cell (even row / col numbers)
 #pos.subset= pos  #this line is an alternative to the previous, which selects every 2nd cell
-pos.subset = rbind(pos.subset,pos[which(pos$mvg==1),]); pos.subset = unique(pos.subset) #ensure all rf veg cells are included in dataset
+pos.subset = rbind(pos.subset,pos[which(pos$mvg==1),]); pos.subset = unique(pos.subset) #ensure all cells in the target area are included in dataset
+
+# add lat and long columns to pos.subset
+
 
 #append the current environmental data
 for (tfile in list.files(current.bioclim,pattern='\\.asc.gz',full.name=TRUE)) {
 	tasc = read.asc.gz(tfile) #read in the data
-	dataname = gsub(current.bioclim,'',tfile); dataname = gsub('\\.asc.gz','',dataname); dataname = gsub('/','',dataname) #define the column name
+	dataname = gsub(current.bioclim,'',tfile);
+  dataname = gsub('\\.asc.gz','',dataname);
+  dataname = gsub('/','',dataname)
 	pos.subset[dataname] = tasc[cbind(pos.subset$row,pos.subset$col)] #append the data
 }
 pos.subset = na.omit(pos.subset) #ensure there is no missing data
@@ -41,8 +47,10 @@ if (exists("mask_layer_name")) {
 }
 
 #define the occurrences & background ... then write out the data
-occur = data.frame(species='rf',pos.subset[which(pos.subset$mvg==1),]); occur$mvg = NULL #define the occurrences
-bkgd = data.frame(species='bkgd',pos.subset); bkgd$mvg=NULL #define the background
+occur = data.frame(species='rf',pos.subset[which(pos.subset$mvg==1),])
+occur$mvg = NULL #define the occurrences
+bkgd = data.frame(species='bkgd',pos.subset)
+bkgd$mvg=NULL #define the background
 
 write.csv(occur,'occur.csv',row.names=FALSE) #write out the occurrences
 write.csv(bkgd,'bkgd.csv',row.names=FALSE) #write out the background
