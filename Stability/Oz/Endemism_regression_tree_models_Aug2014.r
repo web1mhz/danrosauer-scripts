@@ -3,78 +3,29 @@ rm(list=ls())
 
 library(SDMTools)
 library(raster)
-library(glmulti)
 library(dismo)
 
-# first a function - main script follows below
-glm_process = function( result_frame,
-                        model_number,
-                        predictor_text,
-                        response_text,        
-                        response_text_logistic = NULL, # the response variable name, not values                        the_data,
-                        do_spatial_LM = FALSE,
-                        weight_list = NULL,
-                        do_logistic = FALSE,
-                        the_data
-)
-{
-  cat("\n\n** ",model_number,result_frame[model_number,1],result_frame[model_number,2],result_frame[model_number,3]," **\n")
+colour_range <- function(values, class_count = 20, digits = 3) {
+  library(classInt)
+  source("~/FromYale/FromTuraco/PhyloSpatial/MammalData/MapFunctions.r")
   
-  the.formula <- paste(response_text,"~",predictor_text)
-  glm_gauss <- glm(the.formula, data=the_data, family="gaussian")
-  print(summary(glm_gauss))
-  cat("\nGaussian model\naic:",glm_gauss$aic)
-  dev_exp <- (glm_gauss$null.deviance-glm_gauss$deviance)/glm_gauss$null.deviance
-  cat("\nDeviance explained:",dev_exp,"\n")
-  result_frame[model_number,"glm_r2"] <- round(dev_exp,4)
-  result_frame[model_number,"glm_aic"] <- round(glm_gauss$aic,1)
+  # define class breaks as quantile
+  my.class.fr <- classIntervals(values,n=class_count,style="quantile", digits)
+  my.class.fr[[2]] <- round(my.class.fr[[2]],digits)
   
-  if (do_logistic) {
-    the.formula <- paste(response_text_logistic,"~",predictor_text)    
-    glm_logistic <- glm(the.formula, data=the_data, family = "binomial")
-    print(summary(glm_logistic))
-    cat("\nLogistic model \naic:",glm_logistic$aic)
-    dev_exp <- (glm_logistic$null.deviance-glm_logistic$deviance)/glm_logistic$null.deviance
-    cat("\nDeviance explained:",dev_exp,"\n")
-    result_frame[model_number,"glm_logistic_r2"] <- round(dev_exp,4)
-    result_frame[model_number,"glm_logistic_aic"] <- round(glm_logistic$aic,1)
-  }
+  #set initial colours
+  my.pal<-c("light grey","yellow","red") # choose colors
+  my.col.fr<-findColours(my.class.fr,my.pal,between="to") # ramp colors based on classInts
   
-  if (do_spatial_LM) {
-    
-    SAR_gauss <- errorsarlm(glm_gauss, data=the_data, listw=weight_list, quiet=FALSE, na.omit, zero.policy=TRUE, tol.solve=1e-11)    
-    #calculate AIC
-    SAR_gauss.aic <- (-2*SAR_gauss$LL)+(2*SAR_gauss$parameters)
-    
-    print(summary(SAR_gauss))
-    cat("\nSAR gaussian \naic:",SAR_gauss.aic)
-    result_frame[model_number,"sarlm_aic"] <- round(SAR_gauss.aic,1)
-    
-    if (do_logistic) {
-      SAR_logistic <- errorsarlm(glm_logistic, data=the_data, listw=weight_list, quiet=FALSE, na.omit, zero.policy=TRUE, tol.solve=1e-11)
-      #calculate AIC
-      SAR_logistic.aic <- (-2*SAR_logistic$LL)+(2*SAR_logistic$parameters)
-      
-      print(summary(SARer_with_exp))
-      cat("\nSARLM logistic \naic:",SAR_logistic.aic)
-      result_frame[model_number,10] <- round(SAR_logistic.aic,1)
-    }
-    
-  }
-  
-  return(result_frame)
+  return(my.col.fr)
 }
 
 base_path     <- 'C:/Users/u3579238/Work/Refugia/'
 results.dir   <- paste(base_path,'Results/',sep='')
 
 regions <- data.frame()
-do_logistic <- TRUE
+do_logistic <- FALSE
 logistic_threshold <- 0.95  # for a logistic model to predict membership of top diversity
-
-#whether to do spatial autocorrelation, and at what radius
-do_spatial_LM <- FALSE
-spatial_LM_radius <- 100
 
 # whether to do delta AIC table and glmulti
 do_glmulti <- FALSE
@@ -82,6 +33,7 @@ do_plots   <- FALSE
 
 # whether to fit boosted regression tree models
 do_BRT <- TRUE
+do_BRT_quantile_plots <- TRUE
 
 i <- 1
 regions[i,"region"]        <- 'ALL'
@@ -163,23 +115,18 @@ diversities[j,1:4] <- c("frog","species","richness","frog_rich_sp.asc")
 k  <- 0
 
 # create a data frame to hold the model results
-result_frame <- result_frame <- data.frame(region="",response_description="",predictor_description="",n=0,glm_r2=0,glm_aic=0,glm_delta_aic=0,sarlm_aic=0,sarlm_delta_aic=0,glm_logistic_r2=0,glm_logistic_aic=0,glm_logistic_delta_aic=0,sarlm_logistic_aic=0,sarlm_logistic_delta_aic=0,stringsAsFactors = F)
+result_frame <- data.frame(region="",response_description="",predictor_description="",n=0,glm_r2=0,glm_aic=0,glm_delta_aic=0,sarlm_aic=0,sarlm_delta_aic=0,glm_logistic_r2=0,glm_logistic_aic=0,glm_logistic_delta_aic=0,sarlm_logistic_aic=0,sarlm_logistic_delta_aic=0,stringsAsFactors = F)
 
-if (do_spatial_LM) {
-  library(spdep)
-}
-
-if (do_glmulti) {
-  # create a result data frame
-  glmulti_blank_results <- data.frame(region="",max_pred=0,AIC=-9999,deltaAIC=-9999,r2=0,formula="",stringsAsFactors = F)
-  # add predictor columns
-  glmulti_blank_results <- cbind(glmulti_blank_results,data.frame(now_mod=0,stabil_static=0,stabil_10m=0,bio1=0,bio12=0,bio17=0,roughness=0,region_area=0,stringsAsFactors = 0))
-  glmulti_full_results <- glmulti_blank_results[-1,]
+# SET UP A WINDOW FOR PLOTS
+if (do_BRT_quantile_plots) {
+  windows(20,12)
+  par(mfrow=c(2,4))
 }
 
 #Loop through each region, and within it, each diversity metric
 #for (i in 1:nrow(regions)) {
-for (i in i) { # temp version doing only the all regions model
+#for (i in c(1,7,2,3,4,5,6)) {
+for (i in 1) {
   
   # for the all region model, assign region sizes to cells
 
@@ -247,94 +194,37 @@ for (i in i) { # temp version doing only the all regions model
     }
   
     # rescale the predictors - KEEP THE COLUMN NUMBERS CORRECT
-    pos_rf[,7:14] <- scale(pos_rf[,7:14])
+    #pos_rf[,7:14] <- scale(pos_rf[,7:14])
     
     # add a binary variable for membership of top class
     thresh <- quantile(pos_rf$div,logistic_threshold)
     pos_rf$div_binary <- rep(0,nrow(pos_rf))
     pos_rf$div_binary[pos_rf$div >= thresh] <- 1
 
-    # calculate the distance matrix for SARLM    
-    if (do_spatial_LM) {
-      cat("\n\nPreparing neighbourhood weights for SARLM\n\n")
-      coords<-as.matrix(cbind(pos_rf$row, pos_rf$col))
-      cont.nb <- dnearneigh(coords,0,spatial_LM_radius,longlat=FALSE)
-      weight_list <- nb2listw(cont.nb, glist=NULL, style="W", zero.policy=TRUE)
-    }
-  
     n <- nrow(pos_rf)
+  
+#   # plot current RF suitability v static stability
+#   #windows()
+#   colours <- colour_range(pos_rf$div, class_count = 20, digits = 1)
+#   plot(pos_rf$now_mod,pos_rf$stabil_10m,cex=0.75, cex.lab=1.3, xlab="Current rainforest SDM", ylab="Paleo-stability (10m/yr)", 
+#        cex.axis=1.2, pch=20, col=colours, main = regions$region[i])
+#   abline(a=0,b=1,col="dark green",lwd=2)
+#   
+#   #Prepare legend
+#   legtext <- names(attr(colours,"table"))  # declare labels
+#   legtext <- substr(legtext,2, nchar(legtext)-1) # delete silly brackets
+#   legtext <- sub(","," to ",legtext)
+#   legshow <- c(20,18,15,12,9,6,3,1) # show selected classes from 50
+#   #legend_title <- "log PE"
+#   legcols <- attr(colours,"palette")
+#   leg_top <- max(pos_rf$stabil_10m,na.rm=T) * 1.05
+#   leg_left <- min(pos_rf$now_mod,na.rm=T) - 0.04
+#   legend(leg_left,leg_top,legend=legtext[legshow],fill=legcols[legshow], cex=1,bty="n", title = "", pt.cex = 1.2) # selected legend items
 
-  if (do_glmulti) {
-        
-    # automated predictor selection
-    if (regions$region[i]=="ALL" | regions$region[i]=="ALL_not_SEA") {
-      formula <- "div~stabil_static+stabil_10m+now_mod+bio1+bio12+bio17+roughness+region_area"
-    } else {
-      formula <- "div~stabil_static+stabil_10m+now_mod+bio1+bio12+bio17+roughness" # don't use region_area predictor for single region models
-    }
-    fullGLM      <- glm(data=pos_rf, formula=formula)
-    region_startrow <- nrow(glmulti_full_results) + 1  # use this to calculate deltaAIC for just the region
-    
-    for (model_size in 1:6) {
-      rm(glmulti_res)
-      
-      model_name <- paste(diversities[j,1],diversities[j,2],diversities[j,3],"for",regions[i,"region"])
-      
-      try(glmulti_res <- glmulti(y=fullGLM,level=1, maxsize=model_size, crit="aicc", method="h",name=model_name, report=T, confsetsize=50, plotty=F))
-      if (exists("glmulti_res")) {
-          
-        glmulti_sum <- summary(glmulti_res)
-              
-        # fit the best model
-        bestGLM <- glm(data=pos_rf, formula=glmulti_sum$bestmodel)
-        bestGLM_r2 <- (bestGLM$null.deviance - bestGLM$deviance) / bestGLM$null.deviance
-        bestGLM_r2 <- round(bestGLM_r2,3)
-        bestGLM_sum <- summary(bestGLM)
-        
-        # store results in the data frame
-        glmulti_new_results <- glmulti_blank_results
-        glmulti_new_results$region[1]      <- regions$region[i]
-        glmulti_new_results$max_pred[1]    <- model_size
-        glmulti_new_results$AIC[1]         <- glmulti_sum$bestic
-        glmulti_new_results$formula[1]     <- glmulti_sum$bestmodel
-        glmulti_new_results$r2[1]          <- bestGLM_r2
-        
-        # get model terms and co-efficents
-        terms <- attributes(bestGLM_sum$terms)$term.labels
-        coef  <- bestGLM_sum$coefficients
-        for (pred in terms) {
-          glmulti_new_results[1,pred] <- round(coef[pred,"Estimate"],4)
-        }
-        
-        glmulti_full_results <- rbind(glmulti_full_results,glmulti_new_results)
-        
-        cat("\n**********************************\nBest",model_size,"predictor model of",diversities[j,1],diversities[j,2],diversities[j,3],"for",regions[i,"region"])
-        cat("\nBest model formula:",glmulti_sum$bestmodel,
-            "\nBest model AICC:   ",glmulti_sum$bestic,
-            "\nBest model r^2:    ",bestGLM_r2,"\n**********************************\n")
-  
-        print(summary(bestGLM))
-      } else {
-        glmulti_new_results             <- glmulti_blank_results
-        glmulti_new_results$formula[1]  <- "FAILED"
-        
-        cat("\n**********************************\nBest",model_size,"predictor model of",diversities[j,1],diversities[j,2],diversities[j,3],"for",regions[i,"region"],
-            "\n **  FAILED  **",
-            "\n**********************************\n")
-            
-      }
-    }
-    
-    # calculate deltaAIC
-    rows    <- region_startrow:nrow(glmulti_full_results)
-    minAIC  <- min(glmulti_full_results$AIC,na.rm=T)
-    glmulti_full_results$deltaAIC[rows] <- glmulti_full_results$AIC[rows] - minAIC
-  }
-  
-  
   if (do_BRT) {
+    library(gbm)
     
-    if (regions$region[i] == "ALL") {
+    if (regions$region[i] == "ALL" | regions$region[i] == "ALL_not_SEA") {
       predict_columns <- 7:14
     } else {
       predict_columns <- 7:13
@@ -343,42 +233,58 @@ for (i in i) { # temp version doing only the all regions model
     my.brt <- gbm.step(data=pos_rf, gbm.x = predict_columns, gbm.y = 6,
                       family = "gaussian", tree.complexity = 5,
                       learning.rate = 0.005, bag.fraction = 0.5)
-    my_brt.simple <- gbm.simplify(my.brt,n.drops = 5)
+    #my_brt.simple <- gbm.simplify(my.brt,n.drops = 2)
+
+    if (do_BRT_quantile_plots)     {
+      the.data <- cbind(pos_rf[,c(6,predict_columns)])
+      quantile_points <- seq(0.02,0.98,0.02)
+      nq <- length(quantile_points)
+      
+      # create a data frame for the predictor importance results
+      quant_results <- data.frame(cbind(quantile_points,pos_rf[1:nq,predict_columns]), row.names = NULL)
+      quant_results[,2:ncol(quant_results)] <- NA
+  
+      row <- 1
+      for (q in quantile_points) {
+        my_quantile.brt <- gbm(formula = formula(the.data), data=the.data, distribution = list(name="quantile", alpha = q),)
+        cat("\nQuantile:",q,"\n")
+        qsum <- summary(my_quantile.brt,plotit=F)
+        for (r in 1:nrow(qsum)) {
+          colname <- as.character(qsum[r,1])
+          quant_results[row,colname] <- qsum[r,2]
+        }
+        row <- row + 1
+      }
+  
+      # plot predictor importance across the quantile range
+      plot(quant_results$quantile_points,quant_results$now_mod,type = "l", xlab="Quantile value", ylab="Importance", main = regions$region[i], ylim=c(0,100), lwd=2)
+      lines(quant_results$quantile_points,(quant_results$stabil_static + quant_results$stabil_10m),col="blue", lwd=2)
+    }
+    
     windows()
-    gbm.plot(my.brt, write.title = T, n.plots=3)
-    windows()
-    gbm.plot.fits(my.brt, use.factor = T)
-    find.int <- gbm.interactions(my.brt)
+    summary(my.brt)
+    
+#     windows()
+#     gbm.plot(my.brt, write.title = F, show.contrib = T)
+#     
+#     windows()
+#     gbm.plot.fits(my.brt, use.factor = T)
+#     
+#     find.int <- gbm.interactions(my.brt)
+#     find.int$interactions
+    
     windows()
     title <- paste("Influence of current and past rainforest suitability\n on lineage endemism.   Region:",regions$region[i])
-    gbm.perspec(my.brt, 2, 3, z.range = c(-11,-6.5), theta = -20, perspective = T, x.label="Dynamic stability 10m/yr", y.label = "Current RF model", z.label = "Lineage endemism", main = title)
-    
-    # try random forest
-    rf <- randomForest(formula, data=pos_rf)
-    
+    gbm.perspec(my.brt, 2, 3, z.range = c(-10.5,-4.9), theta = -25, perspective = T, x.label="Dynamic stability 10m/yr", y.label = "Current RF model", z.label = "Lineage endemism", main = title)
+
+    # redo this graph formatted for ms
+    title <- paste("Influence of current and past rainforest suitability\n on lineage endemism.")
+    pdf("gbm perspective stability current rf endemism.pdf",title=title)
+    gbm.perspec(my.brt, 2, 3, z.range = c(-10.5,-4.9), theta = -30, phi=20, x.label="Dynamic stability 10m/yr", y.label = "Current RF model", z.label = "Lineage endemism", main = title, cex.lab=1.2)
+    dev.off()
+
+    cat("A place to pause")
+
   }
   
 }
-
-if (do_glmulti) {
-  setwd(results.dir)
-  write.csv(glmulti_full_results,"Stability_end_GLMulti_Jul.csv")
-  rm(rf.ras, rf.asc, div.ras, div_resample.ras, stabil_static.asc, stabil_static.ras,glmulti_blank_results,glmulti_new_results, rows,minAIC)
-}
-
-if (do_plots) {
-  # now plot current suitability v stability (past suitability), coloured by endemism
-  library(maptools)
-  library(classInt)
-  windows()
-  class_count <- 12
-  my.class <- classIntervals(pos_rf$div,n=class_count,style="quantile", digits=2)
-  my.class_breaks <- round(my.class[[2]],4)
-  my.pal <- c("darkblue","green2","yellow","red")
-  my.col <-findColours(my.class,my.pal)
-  legend_cols <- attr(my.col,"palette")
-  plot(pos_rf$now_mod,pos_rf$stabil_static,xlab="Current suitability",ylab="Stability",col=my.col)
-  legend(x="topleft",legend=my.class_breaks[1:class_count+1],fill=legend_cols)
-}
-
-

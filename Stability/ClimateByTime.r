@@ -6,7 +6,8 @@ point.time.series = function (point_x,point_y,grid_name,directory) {
  
   ################################################################################
   #list the projections, cycle thorugh them and project the models onto them
-  times <- data.frame(year=list.files(directory)) #list the projections
+  times <- data.frame(year=list.files(directory,pattern="[0123456789]{3}")) #list the projections
+
   times$value <- rep(NA,nrow(times))
 
   model_count = 0
@@ -33,7 +34,7 @@ model.time.series = function (point_x,point_y,grid_name,directory) {
   
   ################################################################################
   #list the projections, cycle thorugh them and project the models onto them
-  times <- data.frame(year=list.files(directory,pattern='\\.asc')) #list the projections
+  times <- data.frame(year=list.files(directory,pattern="[0123456789]{3}.asc")) #list the projections
   times$year = gsub('\\.asc','',times$year)
   
   times$value <- rep(NA,nrow(times))
