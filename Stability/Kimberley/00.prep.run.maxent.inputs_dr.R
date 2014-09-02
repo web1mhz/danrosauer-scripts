@@ -8,12 +8,11 @@ library(SDMTools)
 ################################################################################
 
 #define directories
-work.dir = 'C:/Users/u3579238/Work/Refugia/Stability/AWT_RF/'; setwd(work.dir)
+work.dir'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/'; setwd(work.dir)
 current.bioclim = 'C:/Users/u3579238/Work/Refugia/Stability/OZ.climates/bioclim/000'
 maxent.jar = 'C:/Users/u3579238/Work/Refugia/Stability/maxent.jar'
-#veg_grid = 'C:/Users/u3579238/Work/Refugia/Stability/Oz/pre1750_mvg.asc.gz'
-veg_grid = 'C:/Users/u3579238/Work/Refugia/Stability/NVIS/AWT_all_rainforest_100km.asc'
-mask_layer_name='AWT_all_rainforest_100km_mask'
+veg_grid = 'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/IBRA_NorthKimberley.asc'
+mask_layer_name= veg_grid
 output_folder_name = 'maxent.output.topo.buf100km'
 
 #define some basic data
