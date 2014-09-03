@@ -6,13 +6,13 @@ library(sp)
 library(raster)
 
 # parameters
-output_prefix <- 'Broad Kimberley'
-models_dir <- "C:/Users/u3579238/Work/Refugia/Stability/Kimberley/maxent.output_narrow_AMT/"
-output_dir <- "C:/Users/u3579238/Work/Refugia/Stability/Kimberley/maps_narrow_AMT"
+output_prefix <- 'AMT narrow2'
+models_dir <- "C:/Users/u3579238/Work/Refugia/Stability/Kimberley/maxent.output_narrow_AMT2/"
+output_dir <- "C:/Users/u3579238/Work/Refugia/Stability/Kimberley/maps_narrow_AMT2"
 per_pic   <- 4
 
 subset <- c(1, 4, 7, 13, 19, 23, 27, 32, 42, 52, 57, 62)
-do_subset=F
+do_subset=T
 #################
 
 setwd(models_dir)
@@ -25,7 +25,13 @@ coast.shp <- coast.shp[coast.shp$NAM != "PAPUA NEW GUINEA" & coast.shp$NAM != "I
 
 IBRA.shp <- shapefile("C:/Users/u3579238/GISData/IBRA/IBRA7_regions.shp")
 #region_list <- "Northern Kimberley"
-region_list <- c("Northern Kimberley", "Central Kimberley", "Victoria Bonaparte")
+#region_list <- c("Northern Kimberley", "Central Kimberley", "Victoria Bonaparte")
+#region_list <- c("Arnhem Coast","Arnhem Plateau","Central Arnhem","Daly Basin","Darwin Coastal","Gulf Fall and Uplands",
+#                  "Gulf Coastal","Mount Isa Inlier","Ord Victoria Plain","Pine Creek","Sturt Plateau","Tiwi Cobourg",
+#                  "Northern Kimberley", "Central Kimberley", "Victoria Bonaparte")
+region_list <- c("Arnhem Coast","Arnhem Plateau","Central Arnhem","Daly Basin","Darwin Coastal","Gulf Fall and Uplands",
+                 "Gulf Coastal","Mount Isa Inlier","Pine Creek","Tiwi Cobourg","Northern Kimberley", "Central Kimberley",
+                 "Victoria Bonaparte")
 IBRA.shp    <- IBRA.shp[IBRA.shp$REG_NAME_7 %in% region_list,]
 
 

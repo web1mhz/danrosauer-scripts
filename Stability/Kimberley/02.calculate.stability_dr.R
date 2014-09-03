@@ -9,9 +9,21 @@ library(maptools)
 
 ################################################################################
 #Define some directories
-work.dir = 'C:/Users/u3579238/Work/Refugia/Stability/CEC_RF/maxent.output.topo.buf200km'; setwd(work.dir)
-out.dir = 'C:/Users/u3579238/Work/Refugia/Stability/CEC_RF/stability.topo.buf200km/'; dir.create(out.dir)
+work.dir = 'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/maxent.output_narrow_AMT2/'; setwd(work.dir)
+out.dir = 'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/stability.narrow_AMT2/'; dir.create(out.dir)
 Oz.shape_path = 'C:/Users/u3579238/GISData/aus5m_coast.shp'
+
+IBRA.shp = readShapePoly("C:/Users/u3579238/GISData/IBRA/IBRA7_regions.shp")
+#region_list <- "Northern Kimberley"
+#region_list <- c("Northern Kimberley", "Central Kimberley", "Victoria Bonaparte")
+#region_list <- c("Arnhem Coast","Arnhem Plateau","Central Arnhem","Daly Basin","Darwin Coastal","Gulf Fall and Uplands",
+#                  "Gulf Coastal","Mount Isa Inlier","Ord Victoria Plain","Pine Creek","Sturt Plateau","Tiwi Cobourg",
+#                  "Northern Kimberley", "Central Kimberley", "Victoria Bonaparte")
+region_list <- c("Arnhem Coast","Arnhem Plateau","Central Arnhem","Daly Basin","Darwin Coastal","Gulf Fall and Uplands",
+                 "Gulf Coastal","Mount Isa Inlier","Pine Creek","Tiwi Cobourg","Northern Kimberley", "Central Kimberley",
+                 "Victoria Bonaparte")
+IBRA.shape    <- IBRA.shp[IBRA.shp$REG_NAME_7 %in% region_list,]
+
 
 #list the projections
 sims = list.files(,pattern='\\.asc'); sims = gsub('\\.asc','',sims)
@@ -45,12 +57,13 @@ image.grid = function(tasc,tfile,zlim=NULL,cols=NULL) {
 		par(mar=c(0,0,0,0),cex=1)
 		if (is.null(zlim)) { zlim = range(as.vector(tasc),na.rm=T) }
 		image(tasc,ann=FALSE,axes=FALSE,zlim=zlim,col=cols)
-		legend.gradient(cbind(c(113,114.5,114.5,113),c(-44,-44,-38,-38)),limits=round(zlim,2),title='stability',cols=cols,cex=1.2)	
-		plot(Oz.shape,add=T,border="black",pbg="transparent",lwd=0.6) #add the subregions		
+		legend.gradient(cbind(c(113,114.5,114.5,113),c(-44,-44,-38,-38)),limits=round(zlim,2),title='stability',cols=cols,cex=1.2)
+		plot(Oz.shape,add=T,border="black",pbg="transparent",lwd=0.6) #add the subregions
+	  plot(IBRA.shape,add=T,border="red",pbg="transparent",lwd=0.6) #add the subregions
 	dev.off()
 }
 
-#calculate the moving window cost 
+#calculate the moving window cost
 mw.cost = function(n) {
 	#define the size of the moving window
 	max.dist.moved = mdd * n
@@ -92,11 +105,11 @@ cost.suitability = -log(indata)
 cost.suitability[which(is.infinite(cost.suitability))] = -log(zero.offset)
 ###for calculating suitability / cost... we need to account for 'offshore' information
 #to deal with this, we need to grab the maximum extent of the data and set any NA within that to 0 suitability
-#that way, it will have HUGE cost and thus 
+#that way, it will have HUGE cost and thus
 pos = NULL #setup object to track largest set of values
 for (ii in 1:length(sims)) { cat(sims[ii],'\n'); # extract the maximum set of points
-	if (is.null(pos)) { 
-		pos = which(is.finite(cost.suitability[,,ii]),arr.ind=TRUE) 
+	if (is.null(pos)) {
+		pos = which(is.finite(cost.suitability[,,ii]),arr.ind=TRUE)
 	} else {
 		if (nrow(pos) < length(which(is.finite(cost.suitability[,,ii])))) {
       pos = which(is.finite(cost.suitability[,,ii]),arr.ind=TRUE)
@@ -124,7 +137,7 @@ for (ii in 1:length(sims)){
   cat(sims[ii],'\n')
   min.asc = pmax(min.asc,cost.suitability[,,ii],na.rm=T)
   mean.asc = mean.asc + cost.suitability[,,ii]
-  
+
   # a progressive plot of the mean suitability so far, if requested
   if(plot.live) {
     plot(raster.from.asc(exp(-(mean.asc/ii))),main=paste("Static stability calculated so far, from years 000 to",sims[ii]))
@@ -137,8 +150,8 @@ write.asc(min.asc,paste(out.dir,'static.min.asc',sep=''))#write out the data
 write.asc(mean.asc,paste(out.dir,'static.mean.asc',sep=''))#write out the data
 bins = seq(0,1,length=101); bins = cut(0.0242,bins,labels=FALSE) # get the threshold bin for cols
 cols = c(rep('gray',bins),colorRampPalette(c('brown','yellow','forestgreen'))(100)[bins:100])
-image.grid(min.asc,paste(out.dir,'static.min.png',sep=''),zlim=c(0,1),cols=cols) #plot the image 
-image.grid(mean.asc,paste(out.dir,'static.mean.png',sep=''),zlim=c(0,1),cols=cols) #plot the image 
+image.grid(min.asc,paste(out.dir,'static.min.png',sep=''),zlim=c(0,1),cols=cols) #plot the image
+image.grid(mean.asc,paste(out.dir,'static.mean.png',sep=''),zlim=c(0,1),cols=cols) #plot the image
 
 ################################################################################
 ################################################################################
@@ -152,7 +165,7 @@ static.asc = base.asc; static.asc[,] = cost.suitability[,,1] #set the static.asc
 #sum the predictions to get the average
 for (ii in 2:length(sims)){
   cat(sims[ii],'\n')
-  static.asc = static.asc + cost.suitability[,,ii] 
+  static.asc = static.asc + cost.suitability[,,ii]
 }
 static.asc = static.asc / (length(sims)*2-1); static.asc = exp(-static.asc)
 write.asc(static.asc,paste(out.dir,'static.sum.cost.asc',sep=''))#write out the data
@@ -162,7 +175,7 @@ image.grid(static.asc,paste(out.dir,'static.sum.cost.png',sep=''),zlim=c(0,1),co
 ### 10 m/ year
 #define the max dispersal distance in units per year (defined by resolution of your inputs)
 #e.g., if cell size is 0.002998 decimal degrees (~250m resolution) and you want 10 m dispersal distance per year
-#set mdd = 10 * 0.002998 / 250 
+#set mdd = 10 * 0.002998 / 250
 mdd.id = 10 #m/year
 mdd = mdd.id * cell.size / 4000
 outdata = cost.suitability #reset the output data
@@ -170,7 +183,7 @@ outdata = cost.suitability #reset the output data
 #set up to do a live plot
 if (plot.live) {windows(10,10)}
 
-#calculate the stability surfaces 
+#calculate the stability surfaces
 for (ii in (length(sims)-1):1){  #cycle through each of the layers starting with the last
   cat(sims[ii],'...')
   #define the size of the moving window
@@ -178,7 +191,7 @@ for (ii in (length(sims)-1):1){  #cycle through each of the layers starting with
 	mw = mw.cost(num.years)
 	#workout and store in outdata
 	outdata[,,ii] = cost.suitability[,,ii] + lcmw(outdata[,,ii+1],mw,round((mdd * num.years) / cell.size))
-  
+
   # a progressive plot of the mean suitability so far, if requested
   if(plot.live) {
     plot(raster(exp(-(outdata[,,ii]/(ii*2-1)))),main=paste("Dymanic stability (",mdd.id,"/yr calculated so far, from years 000 to",sims[ii]))
@@ -195,7 +208,7 @@ image.grid(tasc,paste(out.dir,'shift.',mdd.id,'.png',sep=''),zlim=c(0,1),cols=tc
 ### 20 m/ year
 #define the max dispersal distance in units per year (defined by resolution of your inputs)
 #e.g., if cell size is 0.002998 decimal degrees (~250m resolution) and you want 10 m dispersal distance per year
-#set mdd = 10 * 0.002998 / 250 
+#set mdd = 10 * 0.002998 / 250
 mdd.id = 20 #m/year
 mdd = mdd.id * cell.size / 4000
 outdata = cost.suitability #reset the output data
@@ -203,7 +216,7 @@ outdata = cost.suitability #reset the output data
 #set up to do a live plot
 if (plot.live) {windows(10,10)}
 
-#calculate the stability surfaces 
+#calculate the stability surfaces
 for (ii in (length(sims)-1):1){ cat(sims[ii],'...') #cycle through each of the layers starting with the last
 	#define the size of the moving window
 	num.years = (as.numeric(sims[ii+1]) - as.numeric(sims[ii])) *1000
@@ -213,7 +226,7 @@ for (ii in (length(sims)-1):1){ cat(sims[ii],'...') #cycle through each of the l
   # a progressive plot of the mean suitability so far, if requested
   if(plot.live) {
     plot(raster(exp(-(outdata[,,ii]/(ii*2-1)))),main=paste("Dynamic stability (",mdd.id,"m/yr calculated so far, from years 000 to",sims[ii]))
-  }                             
+  }
 }
 #create the plot & ascii output...
 tasc = base.asc; tasc[,] = outdata[,,1] #get the data

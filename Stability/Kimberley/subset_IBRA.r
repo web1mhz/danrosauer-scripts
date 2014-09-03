@@ -93,3 +93,19 @@ plot(IBRA_Kimb.ras)
 output_path     <- 'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/'
 output_filename <- "IBRA_NarrowAMT.asc"
 writeRaster(IBRA_Kimb.ras, paste(output_path,output_filename,sep=""), overwrite=TRUE)
+
+# Narrow AMT2
+region_list <- c("Arnhem Coast","Arnhem Plateau","Central Arnhem","Daly Basin","Darwin Coastal","Gulf Fall and Uplands",
+                 "Gulf Coastal","Mount Isa Inlier","Pine Creek","Tiwi Cobourg","Northern Kimberley", "Central Kimberley",
+                 "Victoria Bonaparte")
+IBRA_Kimb.shp  <- IBRA.shp[IBRA.shp$REG_NAME_7 %in% region_list,]
+IBRA_Kimb.ras <- shp2raster(shp = IBRA_Kimb.shp, mask.raster = template.ras, value = 1, label="IBRA_kimb")
+
+output.extent <- extent(template.ras)
+
+IBRA_Kimb.ras <- crop(IBRA_Kimb.ras,output.extent)
+plot(IBRA_Kimb.ras)
+
+output_path     <- 'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/'
+output_filename <- "IBRA_NarrowAMT2.asc"
+writeRaster(IBRA_Kimb.ras, paste(output_path,output_filename,sep=""), overwrite=TRUE)
