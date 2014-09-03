@@ -12,9 +12,9 @@ library(SDMTools)
 work.dir            <- 'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/'; setwd(work.dir)
 current.bioclim     <- 'C:/Users/u3579238/Work/Refugia/Stability/OZ.climates/bioclim/000'
 maxent.jar          <- 'C:/Users/u3579238/Work/Refugia/Stability/maxent.jar'
-veg_grid            <- 'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/IBRA_NarrowAMT.asc'
+veg_grid            <- 'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/IBRA_NarrowAMT2.asc'
 mask_layer_name     <- veg_grid
-output_folder_name  <- 'maxent.output_narrow_AMT'
+output_folder_name  <- 'maxent.output_narrow_AMT2'
 
 #define some basic data
 mvg.asc  <- read.asc(veg_grid)                 # read in the vegetation grid

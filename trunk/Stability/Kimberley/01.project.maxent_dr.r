@@ -6,23 +6,12 @@ library(raster)
 
 ################################################################################
 #define directories
-work.dir            <- 'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/maxent.output_narrow_AMT/'; setwd(work.dir)
+work.dir            <- 'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/maxent.output_narrow_AMT2/'; setwd(work.dir)
 mxe.dir             <- 'C:/Users/u3579238/Work/Refugia/Stability/OZ.climates/mxe/'
 maxent.jar          <- 'C:/Users/u3579238/Work/Refugia/Stability/maxent.jar'
 
 mask_layer_name     <- 'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/northern_mask.asc'  #only needed if clipping models to mask
 clip_to_mask = TRUE
-
-use_hpc = FALSE # If true, generate hpc shell scripts to run models. If false, run maxent locally, one model at a time (DR 30 Aug 2012)
-
-if (use_hpc) {
-  tmp.sh.dir = 'C:/Users/Dan/Desktop/Dan_Craig_data/RF_Aug2012/tmp.sh.dir/'; dir.create(tmp.sh.dir); system(paste('rm -rf ',tmp.sh.dir,'/*',sep=''))
-  setwd(tmp.sh.dir)
-}
-
-if (clip_to_mask) {
-  mask.ras <- raster(mask_layer_name)
-}
 
 ################################################################################
 #list the projections, cycle thorugh them and project the models onto them
@@ -30,47 +19,32 @@ proj.list = list.files(mxe.dir) #list the projections
 
 model_count = 0
 
+if (clip_to_mask) {mask.ras <- raster(mask_layer_name)}
+
 #cycle through the projections
 for (tproj in proj.list) {
 
-  if (use_hpc) {
+  model_count = model_count+1
 
-    ##create the sh file
-    zz = file(paste(tproj,'.sh',sep=''),'w')
-    cat('##################################\n',file=zz)
-    cat('#!/bin/sh\n',file=zz)
-    cat('cd $PBS_O_WORKDIR\n',file=zz)
-    cat('java -cp ',maxent.jar,'density.Project ',work.dir,'rf.lambdas ',mxe.dir,tproj,' ',work.dir,tproj,'.asc fadebyclamping nowriteclampgrid\n',sep="",file=zz)
-    cat('cd ',work.dir,'\n',sep='',file=zz)
-    cat('gzip ',tproj,'.asc\n',sep='',file=zz)
-    cat('##################################\n',file=zz)
-    close(zz)
-    #submit the script
-    system(paste('qsub -m n ',tproj,'.sh',sep=''))
+  cat("\nAbout to project model for year", tproj,"\n")
 
-  } else {
-    model_count = model_count+1
+  #Original model projection
+  maxent_call = paste('java -mx1024m -cp ',maxent.jar,' density.Project ',work.dir,'area.lambdas ',mxe.dir,tproj,' ',work.dir,tproj,'.asc fadebyclamping nowriteclampgrid',sep="")
 
-    cat("\nAbout to project model for year", tproj,"\n")
+  #Modified model projection to test a model fitted with a restricted set of predictors
+  #maxent_call = paste('java -mx1024m -cp ',maxent.jar,' density.Project ',work.dir,'maxent.output1/rf.lambdas ',mxe.dir,tproj,' ',work.dir,"/maxent.output1/",tproj,'.asc fadebyclamping nowriteclampgrid',sep="")
 
-    #Original model projection
-    maxent_call = paste('java -mx1024m -cp ',maxent.jar,' density.Project ',work.dir,'area.lambdas ',mxe.dir,tproj,' ',work.dir,tproj,'.asc fadebyclamping nowriteclampgrid',sep="")
+  cat(maxent_call,"\n")
 
-    #Modified model projection to test a model fitted with a restricted set of predictors
-    #maxent_call = paste('java -mx1024m -cp ',maxent.jar,' density.Project ',work.dir,'maxent.output1/rf.lambdas ',mxe.dir,tproj,' ',work.dir,"/maxent.output1/",tproj,'.asc fadebyclamping nowriteclampgrid',sep="")
+  system(maxent_call) #run a model
 
-    cat(maxent_call,"\n")
+  model.name <- paste(work.dir,tproj,".asc",sep="")
+  mod.ras <- raster(model.name)
 
-    system(maxent_call) #run a model
-
-    model.name <- paste(work.dir,tproj,".asc",sep="")
-    mod.ras <- raster(model.name)
-
-    if (clip_to_mask) {
-      mod.ras <- crop(mod.ras,mask.ras)
-      mod.ras <- mask(mod.ras,mask.ras)
-      writeRaster(mod.ras,model.name,overwrite=TRUE)
-    }
+  if (clip_to_mask) {
+    mod.ras <- crop(mod.ras,mask.ras)
+    mod.ras <- mask(mod.ras,mask.ras)
+    writeRaster(mod.ras,model.name,overwrite=TRUE)
   }
 
   plot(mod.ras,main=tproj)
