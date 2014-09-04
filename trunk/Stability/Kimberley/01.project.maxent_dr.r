@@ -6,11 +6,14 @@ library(raster)
 
 ################################################################################
 #define directories
-work.dir            <- 'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/maxent.output_narrow_AMT2/'; setwd(work.dir)
+work.dir            <- 'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/maxent.output_Carlia_johnstonei/'; setwd(work.dir)
 mxe.dir             <- 'C:/Users/u3579238/Work/Refugia/Stability/OZ.climates/mxe/'
 maxent.jar          <- 'C:/Users/u3579238/Work/Refugia/Stability/maxent.jar'
+mask_layer_name     <- 'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/northern_mask.asc'  #only needed if
 
-mask_layer_name     <- 'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/northern_mask.asc'  #only needed if clipping models to mask
+species_name        <- 'Carlia_johnstonei'
+
+#clipping models to mask
 clip_to_mask = TRUE
 
 ################################################################################
@@ -29,10 +32,10 @@ for (tproj in proj.list) {
   cat("\nAbout to project model for year", tproj,"\n")
 
   #Original model projection
-  maxent_call = paste('java -mx1024m -cp ',maxent.jar,' density.Project ',work.dir,'area.lambdas ',mxe.dir,tproj,' ',work.dir,tproj,'.asc fadebyclamping nowriteclampgrid',sep="")
+  maxent_call = paste('java -mx1024m -cp ',maxent.jar,' density.Project ', work.dir, species_name, '.lambdas ',mxe.dir,tproj,' ',work.dir,tproj,'.asc fadebyclamping nowriteclampgrid',sep="")
 
   #Modified model projection to test a model fitted with a restricted set of predictors
-  #maxent_call = paste('java -mx1024m -cp ',maxent.jar,' density.Project ',work.dir,'maxent.output1/rf.lambdas ',mxe.dir,tproj,' ',work.dir,"/maxent.output1/",tproj,'.asc fadebyclamping nowriteclampgrid',sep="")
+  #maxent_call = paste('java -mx1024m -cp ',maxent.jar,' density.Project ',work.dir,'maxent.output1/C.johnstonei.lambdas ',mxe.dir,tproj,' ',work.dir,"/maxent.output1/",tproj,'.asc fadebyclamping nowriteclampgrid',sep="")
 
   cat(maxent_call,"\n")
 
