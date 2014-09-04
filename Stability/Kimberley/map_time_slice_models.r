@@ -21,8 +21,8 @@ if (plot_species_points) {
 } else {
 
   output_prefix <- 'Carlia amax'
-  models_dir <- "C:/Users/u3579238/Work/Refugia/Stability/Kimberley/maxent.output_Carlia_amax/"
-  output_dir <- "C:/Users/u3579238/Work/Refugia/Stability/Kimberley/maps_Carlia_amax"
+  models_dir <- "C:/Users/u3579238/Work/Refugia/Stability/Kimberley/maxent.output_Carlia_johnstonei/"
+  output_dir <- "C:/Users/u3579238/Work/Refugia/Stability/Kimberley/maps_Carlia_johnstonei"
 }
 
 per_pic   <- 4
