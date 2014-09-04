@@ -30,7 +30,7 @@ if (plot_region_boundary) {
 }
 
 #list the projections
-sims = list.files(,pattern='\\.asc'); sims = gsub('\\.asc','',sims)
+sims = list.files(,pattern='[0-9].asc'); sims = gsub('\\.asc','',sims)
 
 #define the cell size
 cell.size = 0.04166667
@@ -193,7 +193,7 @@ if (plot.live) {windows(10,10)}
 for (ii in (length(sims)-1):1){  #cycle through each of the layers starting with the last
   cat(sims[ii],'...')
   #define the size of the moving window
-	num.years = (as.numeric(sims[ii+1]) - as.numeric(sims[ii])) *1000
+	num.years = (as.numeric(sims[ii+1]) - as.numeric(sims[ii])) * 1000
 	mw = mw.cost(num.years)
 	#workout and store in outdata
 	outdata[,,ii] = cost.suitability[,,ii] + lcmw(outdata[,,ii+1],mw,round((mdd * num.years) / cell.size))
