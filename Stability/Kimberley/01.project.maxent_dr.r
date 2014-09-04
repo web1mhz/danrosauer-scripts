@@ -6,7 +6,8 @@ library(raster)
 
 ################################################################################
 #define directories
-work.dir            <- 'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/maxent.output_Carlia_johnstonei/'; setwd(work.dir)
+work.dir            <- 'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/maxent.output_Carlia_johnstonei/'
+setwd(work.dir)
 mxe.dir             <- 'C:/Users/u3579238/Work/Refugia/Stability/OZ.climates/mxe/'
 maxent.jar          <- 'C:/Users/u3579238/Work/Refugia/Stability/maxent.jar'
 mask_layer_name     <- 'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/northern_mask.asc'  #only needed if
@@ -14,7 +15,10 @@ mask_layer_name     <- 'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/north
 species_name        <- 'Carlia_johnstonei'
 
 #clipping models to mask
-clip_to_mask = TRUE
+clip_to_mask = F
+
+coast.shp <- shapefile("C:/Users/u3579238/GISData/aus_1m.shp")
+coast.shp <- coast.shp[coast.shp$NAM != "PAPUA NEW GUINEA" & coast.shp$NAM != "INDONESIA",]
 
 ################################################################################
 #list the projections, cycle thorugh them and project the models onto them
@@ -51,5 +55,6 @@ for (tproj in proj.list) {
   }
 
   plot(mod.ras,main=tproj)
+  plot(coast.shp,lwd=0.6, border = "blue", pbg="transparent", add=T)
 }
 

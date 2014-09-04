@@ -18,7 +18,9 @@ current.bioclim     <- 'C:/Users/u3579238/Work/Refugia/Stability/OZ.climates/bio
 maxent.jar          <- 'C:/Users/u3579238/Work/Refugia/Stability/maxent.jar'
 
 genus = 'Carlia'
-species = 'amax'
+species = 'johnstonei'
+
+use_only_with_lineage_ID <- FALSE
 
 mask_layer_name     <- 'C:/Users/u3579238/Work/Refugia/Stability/OZ.climates/bioclim/000/landmask.asc'
 output_folder_name  <- paste('maxent.output',genus,species,sep="_")
@@ -42,9 +44,13 @@ sqlQuery <- paste("select * from genus where genus = '",genus,"'",sep="")
 genus_row  <- sqlQuery(ch,query=sqlQuery)
 genus_id <- genus_row$genus_id
 
-sqlQuery <- paste("select * from specimen where genus_id = ",genus_id," and species = '",species,"'
-                  and lineage_from_mtDNA is not NULL ", "and lineage_from_mtDNA != '' and latitude is not NULL
-                  and longitude is not NULL ", "and (usable_spatial = 1 or usable_spatial is NULL)",sep="")
+sqlQuery <- paste("select latitude, longitude from specimen where genus_id = ",genus_id," and species = '",species,
+                  "' and (is_observation = 0  or is_observation is NULL) and latitude is not NULL",
+                  " and longitude is not NULL ", "and (usable_spatial = 1 or usable_spatial is NULL)",sep="")
+if (use_only_with_lineage_ID) {
+  sqlQuery <- paste(sqlQuery, " and (lineage_from_mtDNA <> '' and lineage_from_mtDNA is not NULL)")
+}
+
 records <- sqlQuery(ch,query=sqlQuery,stringsAsFactors=F)
 odbcClose(channel=ch)
 
@@ -60,6 +66,8 @@ species.ras[cells] <- 1
 
 species.asc <- asc.from.raster(species.ras)
 rm(species.ras)
+
+cat("\n\n*** Starting maxent model with", nrow(coords),"unique locations of", genus, species,"***\n\n")
 
 ################################################################################
 #get a subset of the data for occur & background
@@ -88,7 +96,7 @@ pos.subset = na.omit(pos.subset) #ensure there is no missing data
 #now remove the mask column (if any)
 if (exists("mask_layer_name")) {
   pos.subset[mask_layer_name] <- NULL
-  pos.subset["landmask"] <- NULL
+  #pos.subset["landmask"] <- NULL
 }
 
 #define the occurrences & background ... then write out the data

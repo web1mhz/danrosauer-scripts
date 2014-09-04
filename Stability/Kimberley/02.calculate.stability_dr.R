@@ -1,4 +1,4 @@
-#drafted by Jeremy VanDerWal ( jjvanderwal@gmail.com ... www.jjvanderwal.com )
+# adapted from an original version by Jeremy VanDerWal ( jjvanderwal@gmail.com ... www.jjvanderwal.com )
 #GNU General Public License .. feel free to use / distribute ... no warranties
 
 rm(list=ls())
@@ -9,21 +9,25 @@ library(maptools)
 
 ################################################################################
 #Define some directories
-work.dir = 'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/maxent.output_north_kimb/'; setwd(work.dir)
-out.dir = 'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/stability.north_kimb/'; dir.create(out.dir)
+work.dir = 'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/maxent.output_Carlia_johnstonei/'; setwd(work.dir)
+out.dir = 'C:/Users/u3579238/Work/Refugia/Stability/Kimberley/stability.Carlia_johnstonei/'; dir.create(out.dir)
 Oz.shape_path = 'C:/Users/u3579238/GISData/aus5m_coast.shp'
 
-IBRA.shape = readShapePoly("C:/Users/u3579238/GISData/IBRA/IBRA7_regions.shp")
-#IBRA.shape = readShapePoly("C:/Users/u3579238/Work/Refugia/Stability/Kimberley/AMT_narrow2.shp")
-region_list <- "Northern Kimberley"
-#region_list <- c("Northern Kimberley", "Central Kimberley", "Victoria Bonaparte")
-#region_list <- c("Arnhem Coast","Arnhem Plateau","Central Arnhem","Daly Basin","Darwin Coastal","Gulf Fall and Uplands",
-#                  "Gulf Coastal","Mount Isa Inlier","Ord Victoria Plain","Pine Creek","Sturt Plateau","Tiwi Cobourg",
-#                  "Northern Kimberley", "Central Kimberley", "Victoria Bonaparte")
-# region_list <- c("Arnhem Coast","Arnhem Plateau","Central Arnhem","Daly Basin","Darwin Coastal","Gulf Fall and Uplands",
-#                  "Gulf Coastal","Mount Isa Inlier","Pine Creek","Tiwi Cobourg","Northern Kimberley", "Central Kimberley",
-#                  "Victoria Bonaparte")
-IBRA.shape      <- IBRA.shape[IBRA.shape$REG_NAME_7 %in% region_list,]
+plot_region_boundary <- F
+
+if (plot_region_boundary) {
+  IBRA.shape = readShapePoly("C:/Users/u3579238/GISData/IBRA/IBRA7_regions.shp")
+  #IBRA.shape = readShapePoly("C:/Users/u3579238/Work/Refugia/Stability/Kimberley/AMT_narrow2.shp")
+  region_list <- "Northern Kimberley"
+  #region_list <- c("Northern Kimberley", "Central Kimberley", "Victoria Bonaparte")
+  #region_list <- c("Arnhem Coast","Arnhem Plateau","Central Arnhem","Daly Basin","Darwin Coastal","Gulf Fall and Uplands",
+  #                  "Gulf Coastal","Mount Isa Inlier","Ord Victoria Plain","Pine Creek","Sturt Plateau","Tiwi Cobourg",
+  #                  "Northern Kimberley", "Central Kimberley", "Victoria Bonaparte")
+  # region_list <- c("Arnhem Coast","Arnhem Plateau","Central Arnhem","Daly Basin","Darwin Coastal","Gulf Fall and Uplands",
+  #                  "Gulf Coastal","Mount Isa Inlier","Pine Creek","Tiwi Cobourg","Northern Kimberley", "Central Kimberley",
+  #                  "Victoria Bonaparte")
+  IBRA.shape      <- IBRA.shape[IBRA.shape$REG_NAME_7 %in% region_list,]
+}
 
 #list the projections
 sims = list.files(,pattern='\\.asc'); sims = gsub('\\.asc','',sims)
@@ -59,7 +63,9 @@ image.grid = function(tasc,tfile,zlim=NULL,cols=NULL) {
 		image(tasc,ann=FALSE,axes=FALSE,zlim=zlim,col=cols)
 		legend.gradient(cbind(c(113,114.5,114.5,113),c(-44,-44,-38,-38)),limits=round(zlim,2),title='stability',cols=cols,cex=1.2)
 		plot(Oz.shape,add=T,border="black",pbg="transparent",lwd=0.6) #add the subregions
-	  plot(IBRA.shape,add=T,border="blue",pbg="transparent",lwd=0.6) #add the subregions
+	  if (plot_region_boundary) {
+      plot(IBRA.shape,add=T,border="blue",pbg="transparent",lwd=0.6) #add the subregions
+	  }
 	dev.off()
 }
 
