@@ -9,7 +9,7 @@ library(raster)
 
 plot_species_points <- T
 genus <- "Carlia"
-species <- "johnstonei"
+species <- "amax"
 use_only_with_lineage_ID <- F
 
 if (plot_species_points) {
@@ -21,11 +21,11 @@ if (plot_species_points) {
 } else {
 
   output_prefix <- 'Carlia amax'
-  models_dir <- "C:/Users/u3579238/Work/Refugia/Stability/Kimberley/maxent.output_Carlia_johnstonei/"
-  output_dir <- "C:/Users/u3579238/Work/Refugia/Stability/Kimberley/maps_Carlia_johnstonei"
+  models_dir <- "C:/Users/u3579238/Work/Refugia/Stability/Kimberley/maxent.output_Carlia_amax/"
+  output_dir <- "C:/Users/u3579238/Work/Refugia/Stability/Kimberley/maps_Carlia_amax"
 }
 
-per_pic   <- 4
+per_pic   <- 1
 
 subset <- c(1, 4, 7, 13, 19, 23, 27, 32, 42, 52, 57, 62)
 do_subset=T
