@@ -74,7 +74,7 @@ glm_process <- function(result_frame,
 base_path     <- 'C:/Users/u3579238/Work/AMT/Models/diversity/H_binoei/'
 results.dir   <- paste(base_path,'correlations/',sep='')
 
-resolution    <- 1.8  # resolution for analysis
+resolution    <- 2  # resolution for analysis
 mask          <- "C:/Users/u3579238/Work/AMT/Maps/mon_trop_poly_clip.shp"
 
 # environment grids
@@ -88,7 +88,7 @@ do_spatial_LM <- FALSE
 spatial_LM_radius <- 100
 
 # whether to do delta AIC table and glmulti
-do_glmulti              <- TRUE
+do_glmulti              <- FALSE
 max_glmulti_model_size  <- 10
 do_plots                <- FALSE
 
@@ -220,23 +220,22 @@ j=1 # for now only do lineage endemism
 
   n <- nrow(pos_df)
 
+# automated predictor selection
+formula <- "div ~ bio1 + bio12 + bio17 + AET + Elev + Elev_sd + max_fpar_quantile + max_fpar_quantile:bio12"
+
+formula_LGM <- "div ~ bio1 + bio12 + bio17 + bio1DIFF + bio12PROP + bio17PROP + AET + Elev + Elev_sd + max_fpar_quantile + max_fpar_quantile:bio12"
+
+fullGLM      <- glm(data=pos_df, formula=formula)
+print(summary(fullGLM))
+r2 <- (fullGLM$null.deviance - fullGLM$deviance) / fullGLM$null.deviance
+
+fullGLM_LGM      <- glm(data=pos_df, formula=formula_LGM)
+print(summary(fullGLM_LGM))
+r2_LGM <- (fullGLM_LGM$null.deviance - fullGLM_LGM$deviance) / fullGLM_LGM$null.deviance
+
+cat("\nresolution",resolution,"\nr squared (present climate)",round(r2,4),"\nr squared (present  & LGM climate)", round(r2_LGM,4),"\n\n")
+
 if (do_glmulti) {
-
-  # automated predictor selection
-  formula <- "div ~ bio1 + bio12 + bio17 + AET + Elev + Elev_sd + max_fpar_quantile + max_fpar_quantile:bio12"
-
-  formula_LGM <- "div ~ bio1 + bio12 + bio17 + bio1DIFF + bio12PROP + bio17PROP + AET + Elev + Elev_sd + max_fpar_quantile + max_fpar_quantile:bio12"
-
-  fullGLM      <- glm(data=pos_df, formula=formula)
-  print(summary(fullGLM))
-  r2 <- (fullGLM$null.deviance - fullGLM$deviance) / fullGLM$null.deviance
-
-  fullGLM_LGM      <- glm(data=pos_df, formula=formula_LGM)
-  print(summary(fullGLM_LGM))
-  r2_LGM <- (fullGLM_LGM$null.deviance - fullGLM_LGM$deviance) / fullGLM_LGM$null.deviance
-
-  cat("\nresolution",resolution,"\nr squared (present climate)",round(r2,4),"\nr squared (present  & LGM climate)", round(r2_LGM,4),"\n\n")
-
   startrow <- nrow(glmulti_full_results) + 1  # use this to calculate deltaAIC for just the region
 
   for (model_size in 1:max_glmulti_model_size) {
