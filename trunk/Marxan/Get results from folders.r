@@ -1,11 +1,12 @@
 rm(list=ls())
 
-base_dir       <- "/home2/danr/marxan_mammals/ph_step_batch/" # the output directory sits within this
-dir_pattern    <- "run__"
+#base_dir       <- "/home2/danr/marxan_mammals/ph_25cap_5pc/" # the output directory sits within this
+base_dir       <- "/home2/danr/marxan_mammals/sp_25cap_5pc/" # the output directory sits within this
+
+dir_pattern    <- "run_"
 output_dir     <- paste(base_dir,"runs_combined/",sep="")
 #files_to_get   <- c("pu.dat","input.dat")
 files_to_get   <- c("output_sum.txt","output_ssoln.txt")
-file.pattern       <- 'output_r'  #regex
 
 runs_per_tree  <- 10
 
@@ -20,8 +21,6 @@ for (dir in dirs) {
   dir_num <- strsplit(dir,dir_pattern)[[1]][2]
   dir_num  <- as.numeric(dir_num)
   if (!is.na(dir_num)) {
-    full_path = paste(base_dir,dir,sep="")
-    output_files= list.files(path = full_path, pattern = file.pattern, recursive = FALSE,ignore.case = TRUE, include.dirs = FALSE)
     filename <- paste(base_dir,dir,"/",fetch.filename,sep="")
       if (file.exists(filename)) {
         this.result <- read.csv(filename)
