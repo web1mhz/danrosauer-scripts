@@ -1,25 +1,30 @@
 rm(list=ls())
 library(gdata)
 
-source("/home2/danr/scripts/phylo_spatial/Prepare_Marxan_Inputs.r")
+#source("/home2/danr/scripts/phylo_spatial/Prepare_Marxan_Inputs.r")
 
-base_dir       <- "/home2/danr/marxan_mammals/sp_step/run_many_10pc" # the output directory sits within this
-file_to_change <- "spec_10pc.dat"
-file_new_name  <- "spec_10pc_sp_only.dat"
+input_dir      <- "/home2/danr/marxan_mammals/ph_25cap/run_1"
+base_dir       <- "/home2/danr/marxan_mammals/sp_25cap" # the output directory sits within this
+file_to_change <- "spec_ph_25pc_cap.dat"
+file_new_name  <- "spec_sp_25pc_cap.dat"
+spf            <- 16.14367 # mean length of terminal branches across 100 trees
 
-dir = base_dir
-filename_read <- paste(dir,"/",file_to_change,sep="")
-spec <- read.fwf(filename_read, widths=c(5,9,9,31),header=F,skip=1)
+filename_read <- paste(input_dir,"/",file_to_change,sep="")
+spec <- read.csv(filename_read)
 names(spec) <- c("id","target","spf","name")
-#### here original range, than apply get_target function
-spec$target[spec$id > 4777] <- 0
-spec$spf[spec$id > 4777] <- 0
-spec$spf[spec$id <= 4777] <- 1
+
+terminals <- which(substr(spec$name,1,4) != "node")
+
+#spec$target[-terminals] <- 0  # commented out to leave the targets unchanged, so performance against them can be easily assessed
+spec$spf[-terminals] <- 0
+
+# set the SPF for species
+spec$spf[terminals] <- spf
 spec$name <- trim(spec$name)
 
 # write the version with new targets
-filename_new <- paste(dir,"/",file_new_name,sep="")
-spec <- spec[,1:4] # omit the range column 
+filename_new <- paste(base_dir,"/",file_new_name,sep="")
+#spec <- spec[,1:4] # omit the range column
 write.csv(spec,filename_new,row.names=F)
 
-cat("\nDone for",dir,"\n")
+cat("\nDone for",base_dir,"\n")

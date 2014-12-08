@@ -72,7 +72,7 @@ h<-hclust(soldist, method='complete')
 
 #bmp(file='C:\\Work\\Worldwide Marxan\\Marxan\\output\\output_dendogram.bmp',width=1900,height=1060,pointsize=10)
 
-plot(h, xlab='Solutions', ylab='Disimilarity', main='Bray-Curtis dissimilarity of solutions',col=cols[tree_num_consec])
+plot(h, xlab='Solutions', ylab='Disimilarity', main='Bray-Curtis dissimilarity of solutions', col=tree_num_consec)
 
 #dev.off()
 
