@@ -1,4 +1,5 @@
 library(phylobase)
+library(dplyr)
 
 ExtractBranchRanges = function(Trees_in,
                               QuadInfo_in,
@@ -180,10 +181,10 @@ ExtractBranchRanges = function(Trees_in,
       for (m in 1:CountNodes) {
 
         if (is.tip[m]) {
-          BranchLatin <- tree_table$label[m]
+          BranchLatin  <- tree_table$label[m]
           BranchSpecID <- SpecMaster$SpecID[SpecMaster$taxon_name_tree == BranchLatin]  #SpecIDs of species descendant from this node
-          BranchOcc <- Occ[Occ$SpecID %in% BranchSpecID,]  # Subset Occ list to those species
-          BranchQuad <- BranchOcc[,-2]
+          BranchOcc    <- Occ[Occ$SpecID %in% BranchSpecID,]  # Subset Occ list to those species
+          BranchQuad   <- BranchOcc[,-2]
 
         } else {
 
@@ -192,8 +193,10 @@ ExtractBranchRanges = function(Trees_in,
           children_done <- BranchData$BranchDone[children]
 	   if (all(children_done)) {
             childrenOcc  <- BranchOccAll[BranchOccAll$BranchID %in% children,]
-            childrenOcc  <- aggregate(childrenOcc[,2:3],by=list(childrenOcc$QuadID),FUN=sum)
-            BranchQuad   <- childrenOcc[,-1]
+
+            childrenOcc  <- summarise(group_by(childrenOcc[,2:3], QuadID), Proportion=sum(Proportion))
+
+            BranchQuad   <- childrenOcc
             cat(".")  # remove once its working
 	   } else {
 
@@ -202,8 +205,9 @@ ExtractBranchRanges = function(Trees_in,
             BranchLatin  <- names(descendants(phy4, m, type="tips"))
             BranchSpecID <- SpecMaster$SpecID[SpecMaster$taxon_name_tree %in% BranchLatin]  #SpecIDs of species descendant from this node
             BranchOcc    <- Occ[Occ$SpecID %in% BranchSpecID,]  # Subset Occ list to those species
-            BranchQuad   <- aggregate(BranchOcc[,2:3],by=list(BranchOcc$QuadID),FUN=sum)
-            BranchQuad   <- BranchQuad[,-2]
+            #BranchQuad  <- aggregate(BranchOcc[,c(1,3)],by=list(BranchOcc$QuadID),FUN=sum)
+            BranchQuad   <- summarise(group_by(BranchOcc[,c(1,3)], QuadID), Proportion=sum(Proportion))
+            #BranchQuad   <- BranchQuad[,-2]
           }
 
           # ensure that where species occur in the same cell, the total proportion of area does not sum to > 1
@@ -223,7 +227,8 @@ ExtractBranchRanges = function(Trees_in,
         if (m==1) {
           BranchOccAll <- BranchQuad
         } else {
-          BranchOccAll <- rbind(BranchOccAll, BranchQuad)
+          BranchOccAll <- rbind_list(BranchOccAll, BranchQuad)
+          #BranchOccAll <- rbind(BranchOccAll, BranchQuad)
         }
 
         BranchData$BranchRange[m] <- sum(BranchQuad$Proportion)
@@ -231,7 +236,7 @@ ExtractBranchRanges = function(Trees_in,
 
         # progress output - remove once working
         if (m %% 100 == 0) {
-          cat("\n",m,"of",CountNodes,"done")
+          cat("\n",m,"of",CountNodes,"done for tree\t",i)
 	   minutes_elapsed <- as.double(round(difftime(Sys.time(), StartSysTime, units = "mins"), 2))
           cat("\n",tree_table$label[m],"\t",nrow(BranchQuad),"\t",nrow(BranchOccAll),"\t", ( j + first_dir_num - 1), "\t", minutes_elapsed, "minutes\n")
         }
@@ -247,6 +252,14 @@ ExtractBranchRanges = function(Trees_in,
       quad_list <- QuadInfo_in[,c("GRID360ID", "LandProportion")]
 
       gc()
+
+##############################################################
+#### TEMPORARY FEEDBACK ####
+cat("\nRows in BranchOccAll:",nrow(BranchOccAll),"\n")
+cat("\nUnique rows in BranchOccAll:",nrow(unique(BranchOccAll)),"\n")
+cat("\n",names(BranchOccAll)[1:2],"\n")
+cat("\nUnique BranchOccAllin Occ cols 1-2:",nrow(unique(BranchOccAll[,1:2])),"\n")
+#### TEMPORARY FEEDBACK ####
 
       if (output_Type == "Marxan") {
         result <- MarxanInputs(write.dir = this_output_dir,

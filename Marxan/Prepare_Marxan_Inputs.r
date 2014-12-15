@@ -36,8 +36,9 @@ MarxanInputs <- function(
   species_count <- length(tipLabels(tree))
   mean_spf      <- mean(as.double(spec$spf[1:species_count]))
 
-  pu_from_occ   <- data.frame(sort(unique(node_occ[,2])))
-  names(pu_from_occ)  <- "QuadID"
+  pu_from_occ <- data.frame(unique(node_occ[,2]))
+  pu_from_occ <- data.frame(QuadID = sort(pu_from_occ$QuadID))
+  #names(pu_from_occ)  <- "QuadID"
   names(quad_list)[1] <- "QuadID"
 
   pu_list      <- merge(pu_from_occ,quad_list,by="QuadID", all=F)
