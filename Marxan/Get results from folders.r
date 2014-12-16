@@ -1,7 +1,7 @@
 rm(list=ls())
 
-#base_dir       <- "/home2/danr/marxan_mammals/ph_25cap_5pc/" # the output directory sits within this
-base_dir       <- "/home2/danr/marxan_mammals/sp_25cap_5pc/" # the output directory sits within this
+#base_dir       <- "/home2/danr/marxan_mammals/ph_25cap_10pc/" # the output directory sits within this
+base_dir       <- "/home2/danr/marxan_mammals/sp_25cap_10pc/" # the output directory sits within this
 
 dir_pattern    <- "run_"
 output_dir     <- paste(base_dir,"runs_combined/",sep="")
@@ -11,6 +11,10 @@ files_to_get   <- c("output_sum.txt","output_ssoln.txt")
 runs_per_tree  <- 10
 
 dirs = list.files(base_dir,pattern=dir_pattern, include.dirs=TRUE, recursive=FALSE)
+
+# remove gz files from the vector of directories
+with_gz <- grep("gz",dirs)
+if (length(with_gz) > 0) {dirs <- dirs[- with_gz]}
 
 # combine results for output_ssoln.txt
 fetch.filename="output_ssoln.txt"

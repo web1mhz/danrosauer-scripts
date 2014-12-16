@@ -1,8 +1,8 @@
 rm(list=ls())
 
-base_dir_ph       <- "/home2/danr/marxan_mammals/ph_25cap_5pc/" # the output directory sits within this
-base_dir_sp       <- "/home2/danr/marxan_mammals/sp_25cap_5pc/" # the output directory sits within this
-species_dir_ph    <- "/home2/danr/marxan_mammals/ph_25cap/"
+base_dir_ph       <- "/home2/danr/marxan_mammals/ph_25cap_10pc/" # the output directory sits within this
+base_dir_sp       <- "/home2/danr/marxan_mammals/sp_25cap_10pc/" # the output directory sits within this
+species_dir_ph    <- "/home2/danr/marxan_mammals/input_100/"
 dir_pattern     <- "run_"
 files_to_get    <- c("output_sum.txt","output_ssoln.txt")
 file.pattern       <- 'output_mv0'
