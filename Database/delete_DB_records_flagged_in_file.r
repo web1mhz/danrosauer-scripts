@@ -16,38 +16,26 @@ dbTables <- dbListTables(con)
 
 # load in a table and compare to the existing records
 #new.filename   <- "~/Dropbox/ARC Laureate/sample info/Database/ForUploading/Catalano_data_upload_Eremiascincus_14i15.csv"
-new.filename   <- "~/Dropbox/ARC Laureate/sample info/Database/ForUploading/Carlia_20141128_CN.xlsx"
+new.filename   <- "~/Dropbox/ARC Laureate/sample info/Database/ForUploading/Carlia_20141128_CN.csv"
 db.table       <- "specimen"
 matching_field <- "specimen_local_id"
 
-fields_to_update <- c("catalog_number", "ABTC_number", "lineage_from_mtDNA", "ND2_done", "notes")
-
-tbl.fields     <- dbListFields(con,db.table)
+delete_flag_field <- "delete"
 
 #new.data       <- read.csv(new.filename, stringsAsFactors=F)
 new.data       <- read.xls(new.filename, sheet = "Carlia_20141128_CN", header=T, stringsAsFactors=F)
 new.fields     <- names(new.data)
 new.ids        <- new.data[,matching_field]
 
-# confirm that fields_to_update are in new data
-missing_fields_new <- setdiff(fields_to_update, new.fields)
-if (length(missing_fields_new) > 0) {
-  err.text <- paste("\nField to update not in the new data:", missing_fields_new)
+# confirm that the dlete flag field is in new data
+if (! delete_flag_field %in% new.fields) {
+  err.text <- paste("\nDelete flag not in the new data:", missing_fields_new)
   stop(err.text)
 }
 
-# confirm that fields_to_update are in the database table
-missing_fields_db <- setdiff(fields_to_update, tbl.fields)
-if (length(missing_fields_db) > 0) {
-  err.text <- paste("\nField to update not in database table", db.table, ":", missing_fields_db)
-  stop(err.text)
-}
-
-rm(missing_fields_new, missing_fields_db)
-
-# reduce the new data to the matching field and fields to update
-new.data <- subset(new.data,select = c(matching_field, fields_to_update))
-extant.new.ids <- new.ids[which(!is.na(new.ids))]
+# reduce the new data to the matching field and the delete flag field
+new.data <- subset(new.data, select = c(matching_field, delete_flag_field))
+delete.ids <- new.data[which(new.data[,delete_flag_field]==1), matching_field]
 
 # start a transaction
 #dbBegin(con)
