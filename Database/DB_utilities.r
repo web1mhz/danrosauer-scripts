@@ -1,6 +1,7 @@
 
 library(RMySQL)
 library(stringr)
+library(dplyr)
 
 moritz_db_login <- function(user, passwd) {
 
@@ -67,7 +68,9 @@ value_list_sql <- function(data, column_info, matching_field = NULL) {
 
     col_class <- as.character(column_info[which(column_info$name==col_name), "Sclass"])
 
-    if (col_class=="character") {
+    if (as.character(data[i]) == "NA") {
+      result <- paste(result, names(data)[i], "= NULL", sep="")
+    } else if (col_class=="character") {
       result <- paste(result, names(data)[i], ' = "', data[i], '"', sep="")
     } else { # assumes other column classes are unquoted
       result <- paste(result, names(data)[i], " = ", data[i], sep="")
@@ -77,4 +80,18 @@ value_list_sql <- function(data, column_info, matching_field = NULL) {
   }
 
   return(result)
+}
+
+replace_lookup <- function(input_vector, connection, lookup_table, lookup_field, id_field) {
+  # for a vector of input values, returns the value, and its unique identifier
+  # this is used to match a real value to the ID stored in a relational structure
+
+  input <- data.frame(input_vector, stringsAsFactors=F)  # make the input vector a single column data frame
+  names(input) <- lookup_field
+
+  select.SQL <- paste("SELECT ", id_field, ", ", lookup_field, " FROM ", lookup_table, sep="")
+  lookup    <- dbGetQuery(con, select.SQL)
+
+  output <- left_join(x=input, y=lookup)
+  return(output[,2:1])
 }
