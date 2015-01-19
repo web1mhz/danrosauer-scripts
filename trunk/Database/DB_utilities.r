@@ -95,3 +95,41 @@ replace_lookup <- function(input_vector, connection, lookup_table, lookup_field,
   output <- left_join(x=input, y=lookup)
   return(output[,2:1])
 }
+
+are_there_changes <- function(new_row, db_row) {
+  # returns true if the fields found in both the new_now and the db_row (matched by name) are different
+  # if differences are found, returns FALSE, and the name of the first non-matching field
+  # new_row and db_row should be a single row data frame
+
+
+  n <- ncol(new_row)
+  new_names <- names(new_row)
+  db_names  <- names(db_row)
+
+  blanks <- which(new_row[1,]=="")
+  new_row[1,blanks] <- NA
+  blanks <- which(db_row[1,]=="")
+  db_row[1,blanks] <- NA
+
+  same <- TRUE
+  i    <- 0
+
+  while (i <= n & same==TRUE) {
+    i <- i+1
+    db_colnum <- which(db_names==new_names[i])
+
+    if (!length(db_colnum)>0) {next}  # is there a matching database column (in the selection)
+    if (is.na(new_row[1,i]) & is.na(db_row[1,db_colnum])) {next} # values are equal because both are NA
+
+    if (is.na(new_row[1,i]) | is.na(db_row[1,db_colnum])) { # values are equal because just one is NA
+      # this preceding line shouldn't be reached if both are NA
+      same <- FALSE
+      next
+    }
+
+    if (new_row[1,i] == db_row[1,db_colnum]) {next} # values are different (but not NA)
+    same <- FALSE
+  }
+return(list(!same, new_names[i]))
+
+}

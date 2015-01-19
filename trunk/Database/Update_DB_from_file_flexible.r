@@ -11,12 +11,15 @@ db.table       <- "specimen"
 matching_field <- "specimen_local_id"
 
 #fields_to_update <- c("catalog_number", "ABTC_number", "lineage_from_mtDNA", "ND2_done", "notes")
-fields_to_NOT_update <- c("Delete", "family", "last_change_date", "last_change_user") # update all fields, except as specified
+fields_to_NOT_update <- c("Delete", "family", "xcoord_source", "ycoord_source", "last_change_date", "last_change_user") # update all fields, except as specified
 
 # specify lookup fields
 lookup <- data.frame(field="institution_full_name", lookup_table="institution", matching_field="institution_full_name", lookup_ID="institution_id", stringsAsFactors = F)
 lookup[2,] <- c("genus", "genus", "genus", "genus_id")
 lookup[3,] <- c("state_short", "state", "state_short", "state_ID")
+
+# START FROM (to start not from the beginning)
+#matching_field_start = 30855
 
 ####################
 
@@ -80,6 +83,14 @@ if ("Delete" %in% new.fields) {
 new.data <- subset(new.data,select = c(matching_field, fields_to_update))
 extant.new.ids <- new.data[which(!is.na(new.data[,matching_field])), matching_field]
 
+# check for a start beyond the first record
+if (exists("matching_field_start")) {
+  starting_pos <- which(extant.new.ids==matching_field_start)
+  if (starting_pos > 0) {
+    extant.new.ids <- extant.new.ids[- (1:(starting_pos-1))]
+  }
+}
+
 # start a transaction
 #dbBegin(con)
 records.updated <- 0
@@ -97,6 +108,8 @@ for (id in extant.new.ids) {
   rows <- which(new.data[,matching_field]==id)
   new_row.df <- new.data[rows,]
 
+  changed <- are_there_changes(new_row.df, db_row.df)
+
   ############################
   # add code here (or as a separate function) to identify records (and fields)
   # which have changed, and only update them
@@ -105,16 +118,19 @@ for (id in extant.new.ids) {
   # create sql for update statement
   field_value_txt <- value_list_sql(new_row.df, column_info, matching_field)
 
-  update.SQL <- paste("UPDATE ", db.table, " SET ", field_value_txt,
-                      " WHERE ",  matching_field, " = ", id, ";", sep="")
-  result <- dbSendQuery(con, update.SQL)
+  if (changed[[1]]) {
+    update.SQL <- paste("UPDATE ", db.table, " SET ", field_value_txt,
+                        " WHERE ",  matching_field, " = ", id, ";", sep="")
+    result <- dbSendQuery(con, update.SQL)
 
-  records.updated <- records.updated + 1
-  cat("\n", id, "\t", records.updated, "\n\n")
+    records.updated <- records.updated + 1
+    cat("\n", id, "\t", records.updated, "\n\n")
 
-  dbClearResult(result)
+    dbClearResult(result)
+  } else {
+      cat("\n", id, "\tNot changed\n")
+  }
 }
 
 dbDisconnect(con)
-
 
