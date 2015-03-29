@@ -10,7 +10,7 @@ source("~/Work/Software/danrosauer-scripts/Database/DB_utilities.r")
 #### PARAMETERS ####
 user   <- 'danr'
 
-new.filename   <- "~/Dropbox/ARC Laureate/sample info/Database/ForUploading/crenas_and_Pseudos.csv"
+new.filename   <- "~/Dropbox/ARC Laureate/sample info/Database/ForUploading/2015_frogging_upload.csv"
 db.table       <- "specimen"
 
 #fields_to_insert <- c("catalog_number", "ABTC_number", "lineage_from_mtDNA", "ND2_done", "notes")
