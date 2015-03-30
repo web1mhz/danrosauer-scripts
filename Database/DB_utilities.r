@@ -104,7 +104,7 @@ value_list_sql <- function(data, column_info, matching_field = NULL, purpose = "
   return(result)
 }
 
-replace_lookup <- function(input_vector, connection, lookup_table, lookup_field, id_field) {
+replace_lookup <- function(input_vector, connection, lookup_table, lookup_field, id_field, verbose=F) {
   # for a vector of input values, returns the value, and its unique identifier
   # this is used to match a real value to the ID stored in a relational structure
 
@@ -115,6 +115,18 @@ replace_lookup <- function(input_vector, connection, lookup_table, lookup_field,
   lookup    <- dbGetQuery(con, select.SQL)
 
   output <- left_join(x=input, y=lookup)
+
+  if (verbose) {
+    # print unmatched values to screen
+    unmatched <- unique(output[is.na(output[,2]),1])
+    
+    if (length(unmatched) > 0) {
+      cat("\nThe following values did not have a match in the lookup table", lookup_table, "\n")
+      print(unmatched)
+      cat("\n")
+    }
+  }
+
   return(output[,2:1])
 }
 
