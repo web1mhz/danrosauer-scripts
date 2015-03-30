@@ -3,6 +3,8 @@ library(RMySQL)
 library(stringr)
 library(dplyr)
 
+source("DB_details.r")
+
 moritz_db_login <- function(user, passwd) {
 
   # check for an existing connection with the same name
@@ -13,7 +15,8 @@ moritz_db_login <- function(user, passwd) {
     rm(con)
   }
 
-  con <- dbConnect(RMySQL::MySQL(), dbname="moritz_specimen", host = "moritzdb-moritzlab.azva.dotcloud.net", port=2600, user=user, password=passwd)
+  db_details <- moritz_db_details()
+  con <- dbConnect(RMySQL::MySQL(), dbname = db_details$dbname, host = db_details$host, port = db_details$port, user=user, password=passwd)
 
   # check that the connection was successful
   success=F
