@@ -5,12 +5,12 @@ rm(list=ls())
 
 library(RMySQL)
 library(stringr)
-source("~/Work/Software/danrosauer-scripts/Database/DB_utilities.r")
+source("C:/Users/Dan/Work/Software/Database/DB_utilities.r")
 
 #### PARAMETERS ####
 user   <- 'danr'
 
-new.filename   <- "~/Dropbox/ARC Laureate/sample info/Database/ForUploading/2015_frogging_upload.csv"
+new.filename   <- "~/My Dropbox/ARC Laureate/sample info/Database/ForUploading/2015_frogging_upload.csv"
 db.table       <- "specimen"
 
 #fields_to_insert <- c("catalog_number", "ABTC_number", "lineage_from_mtDNA", "ND2_done", "notes")
@@ -39,11 +39,21 @@ tbl.fields     <- dbListFields(con,db.table)
 new.data       <- read.csv(new.filename, stringsAsFactors=F)
 new.fields     <- names(new.data)
 
+# trim whitespace
+for (i in 1:ncol(new.data)) {
+  colname <- names(new.data)[i]
+  nrows    <- nrow(new.data)
+  if (class(new.data[1:nrows,colname]) == "character") {
+    new.data[,i] <- str_trim(new.data[,i])
+  }
+}
+rm(nrows,colname,i)
+
 # replace lookup fields with the corresponding ID
 for (i in 1:nrow(lookup)) {
   new_column_pos <- which(tolower(new.fields) == lookup$field[i])
   #new.data[new_column_pos] <- str_trim(new.data[,new_column_pos])  # remove leading or trailing spaces
-  id_column <- replace_lookup(input_vector=new.data[new_column_pos], connection=con, lookup_table=lookup$lookup_table[i], lookup_field=lookup$matching_field[i], id_field=lookup$lookup_ID[i])
+  id_column <- replace_lookup(input_vector=new.data[new_column_pos], connection=con, lookup_table=lookup$lookup_table[i], lookup_field=lookup$matching_field[i], id_field=lookup$lookup_ID[i], verbose=T)
   new.data[new_column_pos] <- id_column[,1]
   names(new.data)[new_column_pos] <- names(id_column[1])
   new.fields[new_column_pos] <- names(id_column[1])
