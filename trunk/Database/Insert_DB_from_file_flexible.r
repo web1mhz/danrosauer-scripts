@@ -5,16 +5,18 @@ rm(list=ls())
 
 library(RMySQL)
 library(stringr)
-source("C:/Users/Dan/Work/Software/Database/DB_utilities.r")
+source("~/Work/Software/danrosauer-scripts/Database/DB_utilities.r")
 
 #### PARAMETERS ####
 user   <- 'danr'
 
-new.filename   <- "~/My Dropbox/ARC Laureate/sample info/Database/ForUploading/2015_frogging_upload.csv"
+new.filename   <- "~/Work/AMT/Data/Cryptoblepharus/dan_endemism_modeling/CryptoDB_20141104_final No extras.csv"
 db.table       <- "specimen"
+matching_field <- "specimen_local_id"  # for inserts this is only used to avoid insert records which are already in the db
 
 #fields_to_insert <- c("catalog_number", "ABTC_number", "lineage_from_mtDNA", "ND2_done", "notes")
-fields_to_NOT_insert <- c("Delete", "specimen_local_id", "family", "last_change_date", "last_change_user") # update all fields, except as specified
+fields_to_NOT_insert <- c("Delete", "delete", "cat_num", "specimen_local_id", "family", "last_change_date", "last_change_user") # update all fields, except as specified
+fields_to_check      <- c("field_number", "catalog_number", "ABTC_number", "ALA_record_ID")
 
 # specify lookup fields
 lookup <- data.frame(field="institution_full_name", lookup_table="institution", matching_field="institution_full_name", lookup_ID="institution_id", stringsAsFactors = F)
@@ -33,7 +35,6 @@ rm(passwd)
 
 dbInfo   <- dbGetInfo(con)
 dbTables <- dbListTables(con)
-
 tbl.fields     <- dbListFields(con,db.table)
 
 new.data       <- read.csv(new.filename, stringsAsFactors=F)
@@ -72,20 +73,24 @@ if (exists("fields_to_NOT_insert")) {
 # confirm that fields_to_insert are in new data
 missing_fields_new <- setdiff(fields_to_insert, new.fields)
 if (length(missing_fields_new) > 0) {
-  err.text <- paste("\nField to update not in the new data:", missing_fields_new)
+  err.text <- paste("\nField to insert not in the new data:", missing_fields_new)
   stop(err.text)
 }
 
 # confirm that fields_to_insert are in the database table
 missing_fields_db <- setdiff(fields_to_insert, tbl.fields)
 if (length(missing_fields_db) > 0) {
-  err.text <- paste("\nField to update not in database table", db.table, ":", missing_fields_db)
+  err.text <- paste("\nField to insert not in database table", db.table, ":", missing_fields_db)
   stop(err.text)
 }
 
 rm(missing_fields_new, missing_fields_db)
 
-field_list_txt <- com_sep(fields_to_insert)
+field_list_txt <- paste(matching_field, ",", com_sep(fields_to_insert))
+
+# reduce the data to records which don't already have a unique ID in the database
+matching_records <- which(new.data[,matching_field] > 0)
+new.data <- new.data[-matching_records,]
 
 # reduce the new data to the matching fields
 new.data <- subset(new.data,select = fields_to_insert)
@@ -108,21 +113,51 @@ dbClearResult(result)
 #dbBegin(con)
 records.inserted <- 0
 
+records_not_inserted <- new.data[0,] # a blank data frame which matches the format of new.data
+
 # loop through records which have an id
 for (i in 1:nrow(new.data)) {
 
-  # create sql for insert statement
-  field_value_txt <- value_list_sql(new.data[i,], column_info, "", purpose="INSERT")
+  # check for a matching record already in the database
+  # NOTE: only check for matches on non-blank fields
 
-  insert.SQL <- paste("INSERT INTO ", db.table, "(", field_list_txt, ") VALUES (", field_value_txt, ");", sep="")
-  result <- dbSendQuery(con, insert.SQL)
+  # create sql to select a matching record from the database - with fields_to_update
+  blank_fields <- which(new.data[i,fields_to_check] == "" | is.na(new.data[i,fields_to_check]))
+  fields_to_check_this_time <- fields_to_check[-blank_fields]
+  check_data <- as.data.frame(new.data[i,fields_to_check_this_time], stringsAsFactors = F)
+  names(check_data) <- fields_to_check_this_time
+  where_clause_text <- value_list_sql(check_data, column_info, "", purpose="WHERE_OR")
 
-  records.inserted <- records.inserted + 1
-  cat("\n", records.inserted, "\n\n")
-
+  select.SQL <- paste("SELECT ", field_list_txt, " from ", db.table, " WHERE ", where_clause_text, ";", sep="")
+  result    <- dbSendQuery(con, select.SQL)
+  db_row.df <- dbFetch(result)
+  #column_info <- dbColumnInfo(result)
   dbClearResult(result)
 
+  if (nrow(db_row.df) > 0) { # if there are matching records
+    records_not_inserted <- rbind(records_not_inserted, new.data[i,])  #rbind will be slow if there are lots of records not inserted
+    cat("\nRecord", i, "skipped due to a match to existing records\n\n")
+
+  } else {
+
+    # create sql for insert statement
+    blank_fields <- which(new.data[i,] == "" | is.na(new.data[i,]))
+    fields_to_insert_this_time <- fields_to_insert[-blank_fields]
+    field_value_txt <- value_list_sql(new.data[i,fields_to_insert_this_time], column_info, "", purpose="INSERT")
+    field_list_this_time_txt <- com_sep(fields_to_insert_this_time)
+    insert.SQL <- paste("INSERT INTO ", db.table, "(", field_list_this_time_txt, ") VALUES (", field_value_txt, ");", sep="")
+    result <- dbSendQuery(con, insert.SQL)
+
+    records.inserted <- records.inserted + 1
+    cat("\nRecord", i, records.inserted, "\n\n")
+
+    dbClearResult(result)
+  }
 }
 
 dbDisconnect(con)
+
+if (nrow(records_not_inserted) > 0) {
+  cat("\n", nrow(records_not_inserted), "records were not inserted due to a match with an existing record.  Please check the 'records_not_inserted' data frame which lists them.\n")
+}
 
