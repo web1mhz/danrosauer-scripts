@@ -10,13 +10,14 @@ source("~/Work/Software/danrosauer-scripts/Database/DB_utilities.r")
 #### PARAMETERS ####
 user   <- 'danr'
 
-new.filename   <- "~/Work/AMT/Data/Cryptoblepharus/dan_endemism_modeling/CryptoDB_20141104_final No extras.csv"
+new.filename   <- "~/Dropbox/ARC Laureate/sample info/Database/ForUploading/2015_frogging_upload.xlsx"
 db.table       <- "specimen"
 matching_field <- "specimen_local_id"  # for inserts this is only used to avoid insert records which are already in the db
 
 #fields_to_insert <- c("catalog_number", "ABTC_number", "lineage_from_mtDNA", "ND2_done", "notes")
 fields_to_NOT_insert <- c("Delete", "delete", "cat_num", "specimen_local_id", "family", "last_change_date", "last_change_user") # update all fields, except as specified
-fields_to_check      <- c("field_number", "catalog_number", "ABTC_number", "ALA_record_ID")
+#fields_to_check      <- c("field_number", "catalog_number", "ABTC_number", "ALA_record_ID")
+fields_to_check      <- c("field_number", "ABTC_number", "ALA_record_ID")
 
 # specify lookup fields
 lookup <- data.frame(field="institution_full_name", lookup_table="institution", matching_field="institution_full_name", lookup_ID="institution_id", stringsAsFactors = F)
@@ -36,6 +37,13 @@ rm(passwd)
 dbInfo   <- dbGetInfo(con)
 dbTables <- dbListTables(con)
 tbl.fields     <- dbListFields(con,db.table)
+
+# check the new data type
+suffix <- last(unlist(strsplit(new.filename,".", fixed=T)))
+
+if (suffix=="xls" | suffix=="xlsx") {
+  library(gdata)
+}
 
 new.data       <- read.csv(new.filename, stringsAsFactors=F)
 new.fields     <- names(new.data)
@@ -90,7 +98,9 @@ field_list_txt <- paste(matching_field, ",", com_sep(fields_to_insert))
 
 # reduce the data to records which don't already have a unique ID in the database
 matching_records <- which(new.data[,matching_field] > 0)
-new.data <- new.data[-matching_records,]
+if (length(matching_records) > 0) {
+  new.data <- new.data[-matching_records,]
+}
 
 # reduce the new data to the matching fields
 new.data <- subset(new.data,select = fields_to_insert)
