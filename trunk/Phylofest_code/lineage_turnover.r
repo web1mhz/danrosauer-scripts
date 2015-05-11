@@ -12,6 +12,12 @@ border <- "C:/Users/u3579238/GISData/aus5m_coast_no_norfolk.shp"
 #strip out empty cells
 models <- models[which(models$total > 0),]
 
+rf_only <- TRUE
+if (rf_only) {
+  models <- models[which(models$rf_coarse == 1),]
+}
+
+
 #group cells
 models$lat_group <- as.integer(models$lat/resolution) * resolution
 models$long_group <- as.integer(models$long/resolution) * resolution
@@ -32,7 +38,7 @@ for (col in 1:ncol(models_grouped)) {
 
 row.names(models_grouped) <- models_grouped$cell_name
 
-dist.dist <- distance(as.matrix(models_grouped[,4:ncol(models_grouped)]), method="bray-curtis",spweight="absence")
+dist.dist <- ecodist::distance(as.matrix(models_grouped[,4:ncol(models_grouped)]), method="bray-curtis",spweight="absence")
 dist.dist[which(is.na(dist.dist))] <- 1
 dist_matrix <- as.matrix(dist.dist)
 gc()
@@ -66,8 +72,36 @@ windows(5,10)
 main.text <- paste("Lineage turnover \nresolution:",resolution )
 plot(models_grouped$long_group,models_grouped$lat_group,col=my.cols,pch=15,cex=0.8,xlab="longitude",ylab="latitude", main=main.text)
 
+windows()
+plot(my.axes_r[,1],my.axes_r[,2],col=my.cols,cex=0.8, pch=20, main=main.text)
+
 # add a coastline to the map
 library(raster)
 
 border.shp <- shapefile(border)
 plot(border.shp,add=T)
+
+# try a 3d scatterplot
+library(scatterplot3d)
+windows()
+scatterplot3d(my.axes_r[,1], my.axes_r[,2], my.axes_r[,3], color=my.cols, pch=20, main=main.text)
+
+# try kmeans clustering
+k <- 5
+alg <- "Hartigan-Wong"
+kclust <- kmeans(x=dist_matrix, centers=k, nstart=3, iter.max=500, algorithm=alg)
+kresult <- fitted(kclust,"centers")
+xy_clust <- cbind(models_grouped$long_group,models_grouped$lat_group,attributes(kresult)[[2]][[1]])
+
+main.text <- paste("K means clustering of lineage turnover \nresolution =",resolution, "   K =",k,"\nClustering algorithm:",alg)
+windows(5,10)
+plot(xy_clust[,1],xy_clust[,2],col=xy_clust[,3],pch=15,cex=0.8,xlab="longitude",ylab="latitude", main=main.text, cex.main=0.8)
+plot(border.shp,add=T)
+
+#windows()
+#plot(my.axes_r[,1],my.axes_r[,2],col=kclust$cluster, main=main.text, cex.main=0.8, pch=20)
+
+# try a 3d scatterplot
+library(scatterplot3d)
+windows()
+scatterplot3d(my.axes_r[,1], my.axes_r[,2], my.axes_r[,3], color=kclust$cluster, pch=20, main=main.text)

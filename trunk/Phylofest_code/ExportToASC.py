@@ -14,15 +14,16 @@ import LineageFunctions
 ### PARAMETERS ###
 higher_taxon = "geckoes"
 #genus_list = ["Carlia","Eulamprus","Glaphyromorphus","Gnypetoscincus","Saproscincus","Lampropholis"]
-genus_list = ["Gehyra"]
+genus_list = ["Heteronotia"]
 
-base_dir = "C:\\Users\\Dan\\work\\AMT\\Models\\"
-target_location = "C:\\Users\\Dan\\Work\\AMT\\Models\\lineage_models\\asc\\"
+base_dir = "C:\\Users\\u3579238\\work\\AMT\\Models\\"
+target_location = "C:\\Users\\u3579238\\Work\\AMT\\Models\\lineage_models\\asc_new_method\\"
     
 for genus in genus_list:
     print "\n" + genus + "\n"
 
-    lineage_model_dir = base_dir + "lineage_models\\" + genus + "\\results.gdb"
+    #lineage_model_dir = base_dir + "lineage_models\\" + genus + "\\results.gdb"
+    lineage_model_dir = base_dir + "lineage_models\\lineage_models.gdb"
 
     arcpy.env.workspace = lineage_model_dir
     arcpy.env.overwriteOutput=True

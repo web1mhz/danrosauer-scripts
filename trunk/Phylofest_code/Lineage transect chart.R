@@ -17,7 +17,7 @@ coords <- function(the.line,n,position){
 }
 
 moving_avg <- function(x, n=1, centered=FALSE) {
-  
+
   if (centered) {
     before <- floor  ((n-1)/2)
     after  <- ceiling((n-1)/2)
@@ -25,45 +25,45 @@ moving_avg <- function(x, n=1, centered=FALSE) {
     before <- n-1
     after  <- 0
   }
-  
+
   # Track the sum and count of number of non-NA items
   s     <- rep(0, length(x))
   count <- rep(0, length(x))
-  
-  # Add the centered data 
+
+  # Add the centered data
   new <- x
-  # Add to count list wherever there isn't a 
+  # Add to count list wherever there isn't a
   count <- count + !is.na(new)
   # Now replace NA_s with 0_s and add to total
   new[is.na(new)] <- 0
   s <- s + new
-  
+
   # Add the data from before
   i <- 1
   while (i <= before) {
     # This is the vector with offset values to add
     new   <- c(rep(NA, i), x[1:(length(x)-i)])
-    
+
     count <- count + !is.na(new)
     new[is.na(new)] <- 0
     s <- s + new
-    
+
     i <- i+1
   }
-  
+
   # Add the data from after
   i <- 1
   while (i <= after) {
     # This is the vector with offset values to add
     new   <- c(x[(i+1):length(x)], rep(NA, i))
-    
+
     count <- count + !is.na(new)
     new[is.na(new)] <- 0
     s <- s + new
-    
+
     i <- i+1
   }
-  
+
   # return sum divided by count
   s/count
 }
@@ -118,7 +118,7 @@ data <- as.data.frame(1,row.names="myLine")
 the.spatiallinesdf <- SpatialLinesDataFrame(the.spatiallines,data)
 
 #write the line as a shapefile
-shapefile(the.spatiallinesdf,paste(output.dir,"rosei_line.shp",sep=""),overwrite=T)
+#shapefile(the.spatiallinesdf,paste(output.dir,"rosei_line.shp",sep=""),overwrite=T)
 
 lin_line_values <- extract(lin.stack,the.spatiallines)
 lin_line_values <- lin_line_values[[1]]
@@ -161,11 +161,14 @@ if (smooth_width > 0) {
 
 main_values <- main_values[order(main_values$position,decreasing = F),]
 
+sum_values <- aggregate(main_values[,c(1,3)],by = list(main_values$position),FUN = sum)
+sum_values <- sum_values[,c(1,3)]
+names(sum_values)[1] <- "position"
+
 windows(6,12)
 
 my.plot <- ggplot(main_values, aes(x=position, y=value, fill=lineage)) + geom_area() + ggtitle(title) + xlim(min(main_values$position),max(main_values$position)) + coord_flip()
 my.plot <- my.plot + labs(y = "Predicted suitability", x = "Latitude") + theme_bw(base_size = 12) + theme(panel.grid.major = element_blank()) + theme(panel.border = element_blank())
+my.plot <- my.plot + geom_line(data = sum_values, aes(x=position, y=value, fill=NULL), size = .75)
+
 print(my.plot)
-
-
-

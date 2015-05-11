@@ -1,4 +1,5 @@
-import arcpy, sys, numpy, csv, os, string, math, subprocess, fnmatch
+import arcpy
+import sys, numpy, csv, os, string, math, subprocess, fnmatch
 from datetime import datetime
 from arcpy import env
 import arcpy.sa
@@ -8,35 +9,35 @@ arcpy.env.overwriteOutput=True
 ### PARAMETERS ###
 os.linesep ="\n"
 
-higher_taxon = "skinks"
-genus_list = ["Carlia","Saproscincus","Glaphyromorphus","Gnypetoscincus","Eulamprus","Lampropholis"]  # genus could refer to any group being handled as a set
+#higher_taxon = "skinks"
+genus_list = ["Gehyra"]  # genus could refer to any group being handled as a set
 
 # a changeable list to allow for species in the dataset to be skipped
-named_species   = []
-use_list        = ""  #specify whether to:
+named_species   = ["Gehyra_multiporosa_grp","Gehyra_nana","Gehyra_sp_nov"]
+use_list        = "do"    #specify whether to:
                             #do only the named species (use_list="do")
                             #skip the named species (use_list="skip")
                             #do all the species in the data and ignore the list (use_list="" or anything else);
 
-
-base_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\" + higher_taxon + "\\"
+#base_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\" + higher_taxon + "\\"
+base_dir = "C:\\Users\\u3579238\\work\\AMT\\Models\\"
 combined_sites_folder    = "species_sites\\"
 maxent_loc = "C:\\Users\\u3579238\\Work\\Phylofest\Models\\maxent.jar"
 
 Australia_extent = (112.9,-43.75,153.64,-9)
 
-buffer_dist = 2.5   # the buffer distance
+buffer_dist = 3   # the buffer distance
 source_location = "c:\\Users\\u3579238\\GISData\\EnvironmentGrids\\AusGDMGrids\\maskedgrids\\" # where the original environment grids are stored
 extra_layers = ["twi3se_01deg","slope","geollmeanage"]
 
-use_bias_grid  = True
-bias_grid_name = "skinks_bias_grid.asc" 
-#bias_grid_source_loc = base_dir + "species_models\\bias_files\\bias.gdb\\"
-bias_grid_source_loc = base_dir + "species_models\\bias_files\\"
+use_bias_grid  = False
+bias_grid_name = "geckoes_bias_grid"
+#bias_grid_name = "skink_samplesites" 
+bias_grid_source_loc = base_dir + "species_models\\bias_files\\bias.gdb\\"
 bias_grid_temp_loc   = base_dir + "species_models\\bias_files\\"
 maxent_replicates = 25
 jackknife = False
-processor_threads = 9  # this sets how many processors MaxEnt can use.
+processor_threads = 8  # this sets how many processors MaxEnt can use.
 
 output_gdb_name = "maxent_models.gdb" 
 model_suffix = "_median"
@@ -45,21 +46,22 @@ done_list = []
 
 for genus in genus_list:
     
-    species_site_filename = "species_sites\\" + genus + "_ALA.csv"
+    #species_site_filename = "species_sites\\" + genus + "_ALA.csv"
+    species_site_filename = "\\species_sites\\" + genus + "_species_sites.csv"
     combined_sites_csv = genus + "_maxent.csv" #name of the new csv file of species,lat,long to be created
-    sequence_site_filename = "sequence_sites\\" + genus + "_lin_loc.csv"
+    lineage_site_filename = "lineage_sites\\" + genus + "_lin_loc.csv"
     
-    maxent_model_base = base_dir + "species_models\\maxent\\" + genus + "\\"
+    maxent_model_base = base_dir + "species_models\\maxent\\" + genus
     
-    # extent limits (to deal with different extents between grids)
     target_location = "species_models\\clipped_grids\\" + genus + "\\" # where the clipped grids go
     
     # bioclim layers 1 to 19 are matched automatically.  Any other layers to use are listed here.
         
     ##################
         
-    print "Starting to create clipped environment grids with a " + str(buffer_dist) + " buffer."
+    print "Starting to create clipped environment grids with a buffer of " + str(buffer_dist)
     print "Target: " + target_location
+    print datetime.now()
     
     # create the output folder for clipped grids
     target_location = base_dir + target_location
@@ -71,10 +73,11 @@ for genus in genus_list:
         os.makedirs(maxent_model_base)
     arcpy.env.overwriteOutput=False
     try:
-        maxent_model_base_ESRI = string.replace(maxent_model_base,"\\","/")
-        arcpy.CreateFileGDB_management(maxent_model_base_ESRI, output_gdb_name)
+        maxent_model_GDB_path = base_dir + "species_models\\maxent\\"
+        maxent_model_GDB_path = string.replace(maxent_model_GDB_path,"\\","/")
+        arcpy.CreateFileGDB_management(maxent_model_GDB_path, output_gdb_name)
     except:
-        print "\nFile geodatabase "+maxent_model_base_ESRI+ " " + output_gdb_name + " exists, or could not be created.\n"
+        print "\nFile geodatabase "+maxent_model_GDB_path + output_gdb_name + " exists, or could not be created.\n"
     arcpy.env.overwriteOutput=True    
     
     env.workspace = target_location
@@ -139,8 +142,8 @@ for genus in genus_list:
                         pass
         
     #load the sequenced site coordinates
-    sequence_site_filename = base_dir + sequence_site_filename
-    with open(sequence_site_filename, 'rb') as csvfile:
+    lineage_site_filename = base_dir + lineage_site_filename
+    with open(lineage_site_filename, 'rb') as csvfile:
         sequence_csv = csv.reader(csvfile, delimiter=',')
         rownum = 0
         usecol = 0
@@ -176,12 +179,15 @@ for genus in genus_list:
                         pass
     
     #and combine them
-    sites = species_sites + sequence_sites
+    #sites = species_sites + sequence_sites
+    sites = species_sites
     
     #list the model_groups and remove spaces from taxon names
+    rownum = 0
     model_groups = []
     for row in sites:
         row[0] = string.replace(row[0]," ","_") #replace space in taxon name with _
+        rownum += 1
         if row[0] not in model_groups:
             model_groups.append(row[0])
             
@@ -309,13 +315,14 @@ for genus in genus_list:
             
             print maxent_call  # drop this line after debug complete
             
-            print "\nAbout to start maxent model for: " + model_group + "  replicates: " + str(maxent_replicates) + "\n"
+            print "\nAbout to start maxent model for: " + model_group + "  replicates: " + str(maxent_replicates) + "\nat" + str(datetime.now()) + "\n"
+            
             try:
                 subprocess.call(maxent_call)
              
                 #COPY THE RESULT TO GDB
                 # set the geoprocessing environment
-                model_gdb = maxent_model_base_ESRI + output_gdb_name
+                model_gdb = maxent_model_GDB_path + output_gdb_name
                 env.workspace  = model_gdb
             
                 # import the maxent model result from ascii to ESRI gdb
@@ -362,7 +369,7 @@ for genus in genus_list:
                 del_count +=1
             
             print "Deleted " + str(del_count) + " files created by Maxent\n"
-            print "\n****************************\nFinished models for " + model_group + "\n****************************\n"
+            print "\n*********************************\nFinished models for " + model_group +"\nat " + str(datetime.now()) + "\n*********************************\n"
             done_item = (genus + "  " + model_group)
             done_list.append(done_item)
         else:
