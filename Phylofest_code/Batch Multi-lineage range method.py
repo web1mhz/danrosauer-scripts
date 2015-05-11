@@ -37,9 +37,9 @@ sys.path.append("C:\\Users\\u3579238\Work\Phylofest\\")
 import LineageFunctions
 
 ### PARAMETERS ###
-higher_taxon = "geckoes"
+higher_taxon = "skinks"
 #genus_list = ["Carphodactylus","Cyrtodactylus","Phyllurus","Saltuarius"]  # full gecko genus list
-genus_list = ["Phyllurus"]
+genus_list = ["Saproscincus"]
 
 base_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\" + higher_taxon + "\\"
 output_gdb_name = "results.gdb"
@@ -55,7 +55,7 @@ Distance_method = "model-cost"      ## determines whether distance is calculated
                                     ## so far, can be "euclidian" or "model-cost"
 Weight_function = "inverse_square"  ## determines whether lineage weight is calculated as 1/distance or 1/(distance^2)
                                     ## so far, can be "inverse" or "inverse_square"
-Min_dist_value = 0.0001             ## sets a floor for costthis prevents a division by 0 error.  In future change minimum value to grid_resolution / 2 (distance to edge of cell)
+Min_dist_value = 0.0001             ## sets a floor for cost to prevent a division by 0 error.  In future change minimum value to grid_resolution / 2 (distance to edge of cell)
                                     ##   but keep current value for consistency in this study
 Min_weight_threshold = 0.02         ## weights below this for any layer are set to 0.  If the value here is 0, then no threshold is applied
 Scale_to = "model"                  ## determines whether lineage weights sum to the model suitability or to 1
@@ -63,8 +63,8 @@ Scale_to = "model"                  ## determines whether lineage weights sum to
 model_edited_suffix = "_edited"     ## this is to check if there is a version of the model cliiped to reduce overprediction
 
 # a changeable list to allow for species in the dataset to be skipped
-named_species   = []
-use_list        = ""  #specify whether to:
+named_species   = ["Saproscincus rosei"]
+use_list        = "do"  #specify whether to:
                         #do - the named species (use_list="do")
                         #skip - the named species (use_list="skip")
                         #do all the species in the data and ignore the list (use_list="" or anything else);

@@ -38,7 +38,8 @@ import LineageFunctions
 rules_gdb = "C:\\Users\\u3579238\\Work\\Phylofest\\Models\\EditModels.gdb"
 rules_fc  = "Model_edits"
 higher_taxon = "geckoes"
-model_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\" + higher_taxon + "\\species_models\\"
+#model_dir = "C:\\Users\\u3579238\\work\\Phylofest\\Models\\" + higher_taxon + "\\species_models\\"
+model_dir = "C:\\Users\\u3579238\\Work\\AMT\\Models\\species_models\\maxent\\maxent_models.gdb"
 output_location = rules_gdb  # where the edited models go.  Could be different to the rules_gdb
 model_edited_suffix = "_edited"
 scratch_workspace = "C:\\Users\\u3579238\\Work\\Phylofest\\Models\\"  #scratch workspace is used by ArcGIS for temporary files during analysis

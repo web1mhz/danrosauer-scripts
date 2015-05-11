@@ -33,8 +33,9 @@ max.rows=10000000
 #define directories
 base.dir   =    'C:/Users/u3579238/Work/AMT/Models/'
 #input.dir       <- 'lineage_models/asc_clipped'
-input.dir       <- 'lineage_models/asc_clipped_cube_method/'
-output.dir      <- base.dir
+input.dir       <- 'lineage_models/asc_clipped_cube_method_scale_one/'
+#output.dir      <- base.dir
+output.dir      <- 'C:/Users/u3579238/Work/AMT/Models/'
 file_pattern    <- 'lin_model_het'
 #file_pattern    <- 'gehyra_'
 template_grid   <- 'C:/Users/u3579238/Work/AMT/Models/species_models/maxent/Heteronotia/heteronotia_binoei_17mar14_mean.asc'
@@ -59,14 +60,12 @@ files <- list.files(path = input.dir, pattern = file_pattern, recursive = FALSE,
 
 setwd(input.dir)
 #template.asc = read.asc.gz(files[1])
-template.ras = raster(template_grid)
-model_rows=nrow(template.ras)
-model_cols=ncol(template.ras)
+template.asc = read.asc(template_grid)
+model_rows=nrow(template.asc)
+model_cols=ncol(template.asc)
 
 # the original version, excluding NA cells
-finite_cells <- which(is.finite(template.ras[]))
-pos <- as.data.frame(rowColFromCell(template.ras,finite_cells)) #get all points that have data
-rm(finite_cells)
+pos <- as.data.frame(which(is.finite(template.asc),arr.ind=TRUE)) #get all points that have data
 
 i <- 0
 
@@ -74,14 +73,16 @@ for (tfile in files) {
   checkname=unlist(strsplit(tfile,".",fixed=T))
   if (checkname[length(checkname)]=="asc") {   # only accept filenames ending in .asc
     #tasc = read.asc.gz(tfile)                            #read in the data
-    tras = raster(tfile)                                #read in the data    
-    newname <- gsub(".asc",'',tfile)
-    newname <- tolower(gsub(preface,"",newname))
-    pos[newname] <- tras[cbind(pos$row,pos$col)]           #append the data
-    pos[(which(pos[newname]< threshold)),newname] <- 0    # set values below the threshold to 0
-    pos[(which(is.na(pos[newname]))),newname]     <- 0    # set the nulls to 0    
-    i <- i+1
-    cat("\n",i,newname,"loaded")
+    tasc = read.asc(tfile)                                #read in the data    
+    dataname=gsub(".asc",'',tfile)
+    if (dataname != "Cophixalus_peninsularis") {              #skipping a dodgy model
+      newname <- tolower(gsub(preface,"",dataname))
+      pos[newname] <- tasc[cbind(pos$row,pos$col)]           #append the data
+      pos[(which(pos[newname]< threshold)),newname] <- 0    # set values below the threshold to 0
+      pos[(which(is.na(pos[newname]))),newname]     <- 0    # set the nulls to 0    
+      i <- i+1
+      cat("\n",i,newname,"loaded")
+    }   
   }
 }
 
@@ -146,8 +147,14 @@ gc()
 pos_output <- cbind(pos[1:max.rows,1:2],result)
 pos_output <- pos_output[,-3] # omit the site column
 
-# flip the y values
-#pos_output$row <- max(pos_output$row) + 1 - pos_output$row
+# add lat and long columns
+cellsize <- attr(template.asc,"cellsize")
+ymin <- attr(template.asc,"yll") 
+xmin <- attr(template.asc,"xll")
+
+x <- ((pos_output$row - 1) * cellsize) + xmin
+y <- ((pos_output$col - 1) * cellsize) + ymin
+pos_output <- cbind(pos_output[,1:2],x,y,pos_output[,-(1:2)])
 
 # add residual columns
 PE_WE_mod <- lm(pos_output$PE~pos_output$WE)
@@ -155,10 +162,11 @@ pos_output$PE_WE_resid <- PE_WE_mod$residuals
 PE_WE_loglog_mod <- lm(log(pos_output$PE)~log(pos_output$WE),subset=which(!is.infinite(log(pos_output$WE))))
 pos_output_log <- cbind(pos_output[which(!is.infinite(log(pos_output$WE))),],PE_WE_loglog_mod$residuals)
 
-dataframe2asc(pos_output_log[,c(1,2,8)],paste(output_prefix,"PE_WE_loglog_resid.asc",sep=""),output.dir)
+dataframe2asc(pos_output_log[,c(4,3,10)],paste(output_prefix,"PE_WE_loglog_resid.asc",sep=""),output.dir)
 
-filenames <- c(paste(output_prefix,"PE.asc",sep=""),paste(output_prefix,"PD.asc",sep=""),paste(output_prefix,"WE.asc",sep=""),paste(output_prefix,"SR.asc",sep=""),paste(output_prefix,"PE_WE_resid.asc",sep=""))
-dataframe2asc(pos_output[,1:7],filenames,output.dir)
+pos_output$logPE <- log(pos_output$PE)
+filenames <- c(paste(output_prefix,"PE.asc",sep=""),paste(output_prefix,"PD.asc",sep=""),paste(output_prefix,"WE.asc",sep=""),paste(output_prefix,"SR.asc",sep=""),paste(output_prefix,"PE_WE_resid.asc",sep=""),paste(output_prefix,"logPE.asc",sep=""))
+dataframe2asc(pos_output[,c(4,3,5:10)],filenames,output.dir)
 
 write.csv(pos_output,paste(output_prefix,"scores.csv",sep=""),row.names=FALSE)
 
@@ -167,33 +175,50 @@ PE.ras <- raster(filenames[1])
 windows(9,9)
 plot(PE.ras,main="PE",col=rainbow(25,start=0.1,end=1))
 
+# PE without the top 0.3%
+quant_top <- quantile(pos_output$PE,0.997,na.rm=T)
+PE_top.ras <- PE.ras
+PE_top.ras[PE_top.ras > quant_top] <- NA
+windows(9,9)
+plot(PE_top.ras,main="PE without top 0.3%",col=rainbow(25,start=0.1,end=1))
+
+# log PE
+PElog.ras <- raster(filenames[6])
+windows(9,9)
+plot(PElog.ras,main="log PE",col=rainbow(25,start=0.1,end=1))
+
 PD.ras <- raster(filenames[2])
 windows(9,9)
-plot(PD.ras,main="PD",col=rainbow(25,start=0.1,end=1),ylim=c(180,1400),xlim=c(700,2800))
+plot(PD.ras,main="PD",col=rainbow(25,start=0.1,end=1))
 
 WE.ras <- raster(filenames[3])
 windows(9,9)
-plot(WE.ras,main="WE",col=rainbow(25,start=0.1,end=1),ylim=c(180,1400),xlim=c(700,2800))
+plot(WE.ras,main="WE",col=rainbow(25,start=0.1,end=1))
+
+# log WE
+WElog.ras <- log(WE.ras)
+windows(9,9)
+plot(WElog.ras,main="log WE",col=rainbow(25,start=0.1,end=1))
 
 SR.ras <- raster(filenames[4])
 windows(9,9)
-plot(SR.ras,main="SR",col=rainbow(25,start=0.1,end=1),ylim=c(180,1400),xlim=c(700,2800))
+plot(SR.ras,main="SR",col=rainbow(25,start=0.1,end=1))
 
 PE_WE_resid.ras <- raster(filenames[5])
 windows(9,9)
-plot(PE_WE_resid.ras,main="Residual of PE ~ WE",col=rainbow(25,start=1/6,end=1),ylim=c(240,1400),xlim=c(750,2800))
+plot(PE_WE_resid.ras,main="Residual of PE ~ WE",col=rainbow(25,start=1/6,end=1))
 
-PE_WE_loglog_resid.ras <- raster(filenames[6])
+PE_WE_loglog_resid.ras <- raster(paste(output_prefix,"PE_WE_loglog_resid.asc",sep=""))
 windows(9,9)
-plot(PE_WE_loglog_resid.ras,main="Residual of logPE ~ logWE",col=rainbow(25,start=1/6,end=0.9),ylim=c(240,1400),xlim=c(750,2800))
+plot(PE_WE_loglog_resid.ras,main="Residual of logPE ~ logWE",col=rainbow(25,start=1/6,end=0.9))
 
 
 windows(16,10)
 par(mfrow=c(2,2),mar=c(3,4,3,2))
-plot(PE.ras,main="PE",col=rainbow(25,start=0.1,end=1),ylim=c(240,1400),xlim=c(750,2800))
-plot(PD.ras,main="PD",col=rainbow(25,start=0.1,end=1),ylim=c(240,1400),xlim=c(750,2800))
-plot(WE.ras,main="WE",col=rainbow(25,start=0.1,end=1),ylim=c(240,1400),xlim=c(750,2800))
-plot(SR.ras,main="SR",col=rainbow(25,start=0.1,end=1),ylim=c(240,1400),xlim=c(750,2800))
+plot(PE.ras,main="PE",col=rainbow(25,start=0.1,end=1))
+plot(PD.ras,main="PD",col=rainbow(25,start=0.1,end=1))
+plot(WE.ras,main="WE",col=rainbow(25,start=0.1,end=1))
+plot(SR.ras,main="SR",col=rainbow(25,start=0.1,end=1))
 
 # now for some residuals
 windows(10,10)

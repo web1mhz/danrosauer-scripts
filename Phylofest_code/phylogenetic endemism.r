@@ -99,20 +99,18 @@ calc_PE <- function(tree, sites_x_tips,presence=c("presence","abundance","probab
   return(PE)
 }
 
-calc_PE_mymodels <- function(tree, sites_x_tips,model.groups) {
-  # add code to check that the values are correct for the presence type:
-  # 0 or 1 for presence - this calculates PE (Rosauer et al 2009)
-  # from 0 to 1 for probability - this calculates model weighted PE (Rosauer, in prep)
-  # any value for abundance - this calculation is equivalent to BED (Cadotte & Davies 2010)
+calc_PE_mymodels <- function(tree, sites_x_tips) {
+# tree must be a phylo4d tree containing only the tips for which there is a model of the same name
+# the tree has one data column called model.groups
   
   # change to a phylobase phylo4 object
   if (class(tree) == "phylo") {tree <- phylo4(tree)}
-  
+
   sites_x_branches <- data.frame(cbind(rep(0,nrow(sites_x_tips))))
   
   for (i in 1:nTips(tree)) {
     sites_x_branches[,i] <- sites_x_tips[,which(labels(tree)[i]==names(sites_x_tips))]
-    names( sites_x_branches)[i] <- labels(tree)[i]
+    names(sites_x_branches)[i] <- labels(tree)[i]
     cat(i,dim(sites_x_branches),"\n")
   }
 
@@ -132,18 +130,18 @@ calc_PE_mymodels <- function(tree, sites_x_tips,model.groups) {
   for (i in (nTips(tree)+1):branch.count) {
     branch.labels[i] <- paste("b",i,sep="")
     desc <- as.integer(descendants(tree,i, type="tips"))
-    
-    branch_col <- as.numeric(apply(sites_x_branches[,desc],MARGIN=1,FUN=parent.prob.groups,model.groups[desc]))
+
+    branch_col <- as.numeric(apply(sites_x_branches[,desc],MARGIN=1,FUN=parent.prob.groups,tipData(tree)[desc,1]))
     
     sites_x_branches[,i] <- branch_col
     names(sites_x_branches[i]) <- branch.labels[i]
     cat(i,branch.labels[i],length(desc),"\n")
     gc(verbose=F)
   }
-  
+
   # A ONE-OFF LINE TO WRITE THE SITES BY BRANCHES MATRIX TO DISK
   # OPTION TO PASS IT DIRECTLY IN FUTURE
-  #write.csv(sites_x_branches,"Gehyra_sites_by_branches.csv")
+  write.csv(sites_x_branches,"Het_modelled_sites_x_branches.csv")
 
   # calculate PD
   cat("\nCalculating PD\n")
@@ -152,6 +150,7 @@ calc_PE_mymodels <- function(tree, sites_x_tips,model.groups) {
   for (i in 1:ncol(sites_x_branches)) {
     sites_x_branches_PD[,i] <- sites_x_branches[,i] * branch.lengths[i]
   }
+
   PD.vec <- apply(sites_x_branches_PD,MARGIN=1,FUN=sum,na.rm=T)
   rm(sites_x_branches_PD)
   gc()
@@ -160,8 +159,12 @@ calc_PE_mymodels <- function(tree, sites_x_tips,model.groups) {
   
   #scale columns (branches) to sum to 1
   sites_x_branches <- apply(sites_x_branches,MARGIN=2,FUN=scale.to,1)
-  
-  sites_x_branches <- sites_x_branches[,1:branch.count] * branch.lengths
+
+  #sites_x_branches <- sites_x_branches[,1:branch.count] * branch.lengths
+  for (i in 1:branch.count) {
+    sites_x_branches[,i] <- sites_x_branches[,i] * branch.lengths[i]
+  }
+ 
   PE.vec <- apply(sites_x_branches,MARGIN=1,FUN=sum,na.rm=T)
   
   PE <- data.frame(cbind(1:nrow(sites_x_branches),PE.vec, PD.vec, WE.vec, SR.vec))

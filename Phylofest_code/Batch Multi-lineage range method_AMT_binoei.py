@@ -46,7 +46,7 @@ output_gdb_name = "lineage_models.gdb"
 scratch_workspace = "C:\\Users\\u3579238\\Work\\AMT\\Models\\"  #scratch workspace is used by ArcGIS for temporary files during analysis
 scratch_gdb_name = "scratch.gdb"
 export_asc = True
-asc_target_location = base_dir + "lineage_models\\asc_cube_method\\"
+asc_target_location = base_dir + "lineage_models\\asc_cube_method_scale_one\\"
 
 buffer_dist = 2.5      # the buffer distance in degrees
 additional_buffer = 0  ## how much (as a proportion) the output grids should extend beyond the buffered points
@@ -61,7 +61,7 @@ Weight_function = "inverse_cube"    ## determines whether lineage weight is calc
 Min_dist_value = 0.0001             ## sets a floor for cost. This prevents a division by 0 error.  In future change minimum value to grid_resolution / 2 (distance to edge of cell)
                                     ##   but keep current value for consistency in this study
 Min_weight_threshold = 0.02         ## weights below this for any layer are set to 0.  If the value here is 0, then no threshold is applied
-Scale_to = "model"                  ## determines whether lineage weights sum to the model suitability or to 1
+Scale_to = "one"                    ## determines whether lineage weights sum to the model suitability or to 1
                                     ## can be "model" or "one"
 model_edited_suffix = "_edited"     ## this is to check if there is a version of the model cliiped to reduce overprediction
 
