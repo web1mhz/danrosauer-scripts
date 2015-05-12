@@ -7,12 +7,12 @@ source("~/Work/Software/danrosauer-scripts/Database/DB_utilities.r")
 #### PARAMETERS ####
 user   <- 'danr'
 
-new.filename   <- "~/Work/AMT/Data/Cryptoblepharus/dan_endemism_modeling/CryptoDB_20141104_final duplicates_MB.csv"
+new.filename   <- "~/Dropbox/ARC Laureate/sample info/Database/ForUploading/Oliver_Kimberley_2014_formatted.xls"
 db.table       <- "specimen"
-matching_field <- "specimen_local_id"
+matching_field <- "field_number"
 
-#fields_to_update <- c("catalog_number", "ABTC_number", "lineage_from_mtDNA", "ND2_done", "notes")
-fields_to_NOT_update <- c("delete", "cat_num", "family", "last_change_date", "last_change_user") # update all fields, except as specified
+fields_to_update <- c("latitude", "longitude", "lineage_from_mtDNA")
+#fields_to_NOT_update <- c("delete", "cat_num", "family", "last_change_date", "last_change_user", "field_number", "species", "notes") # update all fields, except as specified
 
 # specify lookup fields
 lookup <- data.frame(field="institution_full_name", lookup_table="institution", matching_field="institution_full_name", lookup_ID="institution_id", stringsAsFactors = F)
@@ -20,7 +20,7 @@ lookup[2,] <- c("genus", "genus", "genus", "genus_id")
 lookup[3,] <- c("state_short", "state", "state_short", "state_ID")
 
 # START FROM (to start not from the beginning)
-matching_field_start = 51169
+#matching_field_start = 51169
 
 
 ####################
@@ -35,7 +35,16 @@ dbTables <- dbListTables(con)
 
 tbl.fields     <- dbListFields(con,db.table)
 
-new.data       <- read.csv(new.filename, stringsAsFactors=F)
+# check the new data type
+suffix <- last(unlist(strsplit(new.filename,".", fixed=T)))
+
+if (suffix=="xls") {
+  library(gdata)
+  new.data       <- read.xls(new.filename, sheet = 1, stringsAsFactors=F)
+} else {
+  new.data       <- read.csv(new.filename, stringsAsFactors=F)
+}
+
 new.fields     <- names(new.data)
 
 # replace lookup fields with the corresponding ID

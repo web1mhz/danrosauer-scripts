@@ -10,14 +10,16 @@ source("~/Work/Software/danrosauer-scripts/Database/DB_utilities.r")
 #### PARAMETERS ####
 user   <- 'danr'
 
-new.filename   <- "~/Dropbox/ARC Laureate/sample info/Database/ForUploading/2015_frogging_upload.xlsx"
+new.filename   <- "~/Dropbox/ARC Laureate/sample info/Database/ForUploading/Oliver_Nov14_Upload.xls"
 db.table       <- "specimen"
 matching_field <- "specimen_local_id"  # for inserts this is only used to avoid insert records which are already in the db
 
 #fields_to_insert <- c("catalog_number", "ABTC_number", "lineage_from_mtDNA", "ND2_done", "notes")
 fields_to_NOT_insert <- c("Delete", "delete", "cat_num", "specimen_local_id", "family", "last_change_date", "last_change_user") # update all fields, except as specified
+
 #fields_to_check      <- c("field_number", "catalog_number", "ABTC_number", "ALA_record_ID")
-fields_to_check      <- c("field_number", "ABTC_number", "ALA_record_ID")
+#fields_to_check      <- c("field_number", "ABTC_number", "ALA_record_ID")
+fields_to_check      <- c("field_number", "ABTC_number", "catalog_number")
 
 # specify lookup fields
 lookup <- data.frame(field="institution_full_name", lookup_table="institution", matching_field="institution_full_name", lookup_ID="institution_id", stringsAsFactors = F)
@@ -31,6 +33,7 @@ lookup[3,] <- c("state_short", "state", "state_short", "state_ID")
 
 cat("\nPassword for ",user,": ",sep="")
 passwd <- scan(what=character(), n=1, quiet = T)
+#passwd <- 'Gehyra'
 con <- moritz_db_login(user,passwd)
 rm(passwd)
 
@@ -41,11 +44,13 @@ tbl.fields     <- dbListFields(con,db.table)
 # check the new data type
 suffix <- last(unlist(strsplit(new.filename,".", fixed=T)))
 
-if (suffix=="xls" | suffix=="xlsx") {
+if (suffix=="xls") {
   library(gdata)
+  new.data       <- read.xls(new.filename, sheet = 1, stringsAsFactors=F)
+} else {
+  new.data       <- read.csv(new.filename, stringsAsFactors=F)
 }
 
-new.data       <- read.csv(new.filename, stringsAsFactors=F)
 new.fields     <- names(new.data)
 
 # trim whitespace
