@@ -146,6 +146,8 @@ replace_lookup <- function(input_vector, connection, lookup_table, lookup_field,
       cat("\nThe following values did not have a match in the lookup table", lookup_table, "\n")
       print(unmatched)
       cat("\n")
+    } else {
+      cat("\nAll values matched to the lookup table", lookup_table, "\n")
     }
   }
 
